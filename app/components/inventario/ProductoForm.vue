@@ -28,8 +28,23 @@ const form = ref({
   codigo_parte: props.producto?.codigo_parte ?? '',
   stock: props.producto?.stock ?? 0,
   precio_venta: props.producto?.precio_venta ?? 0,
-  categoria_id: props.producto?.categoria_id ?? null as string | null
+  categoria_id: props.producto?.categoria_id ?? null as string | null,
+  activo: props.producto?.activo ?? true
 })
+
+// Sincronizar formulario si el producto cambia (carga inicial)
+watch(() => props.producto, (p) => {
+  if (p) {
+    form.value = {
+      nombre: p.nombre,
+      codigo_parte: p.codigo_parte,
+      stock: p.stock,
+      precio_venta: p.precio_venta,
+      categoria_id: p.categoria_id,
+      activo: p.activo
+    }
+  }
+}, { immediate: true })
 
 const errors = ref<Record<string, string>>({})
 const submitted = ref(false)
@@ -115,7 +130,8 @@ const handleSubmit = () => {
       codigo_parte: form.value.codigo_parte.trim(),
       stock: form.value.stock as number,
       precio_venta: form.value.precio_venta as number,
-      categoria_id: form.value.categoria_id || null
+      categoria_id: form.value.categoria_id || null,
+      activo: form.value.activo
     }
   })
 }
@@ -123,6 +139,31 @@ const handleSubmit = () => {
 
 <template>
   <form @submit.prevent="handleSubmit" class="flex flex-col gap-5" novalidate>
+
+    <!-- Estado (Solo en edición) -->
+    <div v-if="producto" class="flex flex-col gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl mb-1">
+      <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-0.5">
+          <label for="activo" class="text-xs font-bold text-slate-700 uppercase tracking-wide">Estado del producto</label>
+          <span class="text-[10px] text-slate-500 font-medium">
+            {{ form.activo ? 'El producto está activo y disponible' : 'El producto está inactivo y oculto' }}
+          </span>
+        </div>
+        <ToggleSwitch id="activo" v-model="form.activo" />
+      </div>
+
+      <!-- Alerta Crítica de Desactivación -->
+      <div v-if="!form.activo" class="bg-rose-50 border border-rose-200 rounded-lg p-3 flex gap-3 items-start animate-in zoom-in duration-300">
+        <div class="p-1.5 bg-rose-100 rounded-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-rose-700"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-[11px] font-black text-rose-800 uppercase tracking-tight mb-1">Modo Desactivación Blindado</p>
+          <p class="text-xs text-rose-700 leading-tight mb-2">Se ignorará cualquier cambio en los campos de abajo. El sistema descargará las <b>{{ props.producto?.stock }} uds</b> actuales a <b>CERO</b> y registrará la incidencia automáticamente.</p>
+          <p class="text-[10px] text-rose-600 italic">Si necesita editar información, vuelva a activar el producto primero.</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Nombre -->
     <div class="flex flex-col gap-1.5">
@@ -134,6 +175,7 @@ const handleSubmit = () => {
         v-model="form.nombre"
         placeholder="Pastillas de freno Honda CGL"
         :invalid="!!errors.nombre"
+        :disabled="!form.activo"
       />
       <small v-if="errors.nombre" class="text-red-600">{{ errors.nombre }}</small>
     </div>
@@ -148,6 +190,7 @@ const handleSubmit = () => {
         v-model="form.codigo_parte"
         placeholder="HON-CGL-PF-001"
         :invalid="!!errors.codigo_parte"
+        :disabled="!form.activo"
       />
       <small v-if="errors.codigo_parte" class="text-red-600">{{ errors.codigo_parte }}</small>
     </div>
@@ -168,13 +211,15 @@ const handleSubmit = () => {
           :loading="loadingCategorias"
           show-clear
           class="flex-1"
+          :disabled="!form.activo"
         />
         <Button
           type="button"
           severity="success"
           class="aspect-square"
           aria-label="Crear categoría"
-          @click="openCategoriaModal">
+          @click="openCategoriaModal"
+          :disabled="!form.activo">
           <Plus class="w-5 h-5" />
         </Button>
       </div>
@@ -192,6 +237,7 @@ const handleSubmit = () => {
         show-buttons
         :invalid="!!errors.stock"
         class="w-full"
+        :disabled="!form.activo"
       />
       <small v-if="errors.stock" class="text-red-600 text-xs">{{ errors.stock }}</small>
     </div>
@@ -211,6 +257,7 @@ const handleSubmit = () => {
         currency="USD"
         :invalid="!!errors.precio_venta"
         class="w-full"
+        :disabled="!form.activo"
       />
       <small v-if="errors.precio_venta" class="text-red-600 text-xs">{{ errors.precio_venta }}</small>
     </div>

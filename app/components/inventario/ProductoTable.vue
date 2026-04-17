@@ -11,6 +11,7 @@ defineProps<{
   sortOrder?: number
   categorias: CategoriaProducto[]
   selectedCategoriaId?: string | null
+  soloActivos?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   search: [term: string]
   sort: [event: { sortField: string; sortOrder: number }]
   'filter-categoria': [id: string | null]
+  'filter-activos': [value: boolean]
 }>()
 
 const { isAdmin } = usePerfil()
@@ -32,6 +34,10 @@ const onSearch = useDebounceFn(() => {
 
 const onCategoriaChange = (value: string | null) => {
   emit('filter-categoria', value)
+}
+
+const onActivosChange = (event: any) => {
+  emit('filter-activos', event)
 }
 </script>
 
@@ -57,6 +63,12 @@ const onCategoriaChange = (value: string | null) => {
         class="w-full md:w-56"
         @update:model-value="onCategoriaChange"
       />
+      <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+        <ToggleSwitch :model-value="soloActivos" input-id="toggleActivos" @update:model-value="onActivosChange" />
+        <label for="toggleActivos" class="text-xs font-bold text-slate-600 uppercase tracking-wide cursor-pointer select-none w-24">
+          {{ soloActivos ? 'Solo activos' : 'Solo inactivos' }}
+        </label>
+      </div>
     </div>
 
     <DataTable
@@ -96,6 +108,14 @@ const onCategoriaChange = (value: string | null) => {
       <Column field="precio_venta" header="Precio" sortable>
         <template #body="{ data }">
           ${{ Number(data.precio_venta).toFixed(2) }}
+        </template>
+      </Column>
+      <Column field="activo" header="Estado" sortable>
+        <template #body="{ data }">
+          <Tag
+            :value="data.activo ? 'ACTIVO' : 'INACTIVO'"
+            :severity="data.activo ? 'success' : 'secondary'"
+          />
         </template>
       </Column>
       <Column v-if="isAdmin" header="Acciones" :exportable="false" style="width: 120px">

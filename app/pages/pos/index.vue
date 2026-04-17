@@ -294,6 +294,11 @@ const finalizarVenta = async () => {
           clientId!,
           corrigeVentaId.value ?? undefined
         )
+
+        // Obtener el número correlativo para el mensaje
+        const { data: nuevaVenta } = await client.from('ventas').select('numero').eq('id', ventaId).single()
+        const numFactura = nuevaVenta?.numero ?? '---'
+
         lastVentaId.value = ventaId
         cart.clear()
         isCheckoutDialogVisible.value = false
@@ -307,9 +312,9 @@ const finalizarVenta = async () => {
           severity: 'success',
           summary: fueCorreccion ? 'Corrección registrada' : 'Venta Procesada',
           detail: fueCorreccion
-            ? 'La nueva factura quedó enlazada con la venta anulada.'
-            : 'Factura registrada y stock actualizado',
-          life: 3000
+            ? `La factura #${numFactura} quedó enlazada con la venta anulada.`
+            : `Factura #${numFactura} registrada y stock actualizado`,
+          life: 5000
         })
 
       } catch (e: any) {

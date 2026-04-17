@@ -16,6 +16,7 @@ const route = useRoute()
 
 const corrigeCompraId = ref<string | null>(null)
 const compraOrigen = ref<any>(null)
+const saving = ref(false)
 
 const proveedores = ref<any[]>([])
 const productos = ref<any[]>([])
@@ -98,7 +99,7 @@ const loadProveedores = async (query = '') => {
 const searchProductos = async (event: any) => {
   loadingProductos.value = true
   try {
-    const { data } = await fetchProductos({ search: event.query, rows: 10 })
+    const { data } = await fetchProductos({ search: event.query, rows: 10, soloActivos: true })
     productos.value = data
   } finally {
     loadingProductos.value = false
@@ -164,16 +165,35 @@ watch(() => purchase.value.iva, () => {
 })
 
 const onSave = async () => {
+  console.log('Iniciando onSave...')
+  console.log('Purchase values:', JSON.stringify(purchase.value))
+  console.log('Cart length:', cart.value.length)
+
   if (!purchase.value.id_proveedor || !purchase.value.numero_factura || cart.value.length === 0) {
+    console.warn('Validación fallida:', {
+      proveedor: purchase.value.id_proveedor,
+      factura: purchase.value.numero_factura,
+      carrito: cart.value.length
+    })
     toast.add({ severity: 'warn', summary: 'Atención', detail: 'Complete todos los campos y agregue productos', life: 3000 })
     return
   }
 
+  saving.value = true
   try {
     const detalles: DetalleCompra[] = cart.value.map(({ nombre, codigo_parte, ...rest }) => rest)
+    console.log('Detalles a enviar:', JSON.stringify(detalles))
+    
+    // Asegurar que la fecha sea un string ISO (YYYY-MM-DD) para la DB
+    const fechaFinal = purchase.value.fecha instanceof Date 
+      ? purchase.value.fecha.toISOString().split('T')[0]
+      : purchase.value.fecha
+    
+    console.log('Fecha final:', fechaFinal)
+
     await registrarCompra({
       numero_factura: purchase.value.numero_factura,
-      fecha: purchase.value.fecha,
+      fecha: fechaFinal,
       id_proveedor: purchase.value.id_proveedor,
       subtotal: purchase.value.subtotal,
       iva: purchase.value.iva,
@@ -181,10 +201,14 @@ const onSave = async () => {
       ...(corrigeCompraId.value ? { corrige_compra_id: corrigeCompraId.value } : {})
     } as any, detalles)
 
+    console.log('Compra guardada con éxito')
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Compra registrada e inventario actualizado', life: 3000 })
     router.push('/compras')
   } catch (error: any) {
-    toast.add({ severity: 'error', summary: 'Error', detail: error.message, life: 3000 })
+    console.error('Error capturado en onSave:', error)
+    toast.add({ severity: 'error', summary: 'Error', detail: error.message, life: 5000 })
+  } finally {
+    saving.value = false
   }
 }
 
@@ -270,7 +294,15 @@ const formatCurrency = (value: number) => {
           <span class="block text-[9px] text-slate-400 uppercase font-bold tracking-widest">Total Factura</span>
           <span class="text-2xl font-black text-blue-600 leading-none">{{ formatCurrency(purchase.total) }}</span>
         </div>
-        <Button label="Guardar Registro" icon="pi pi-save" severity="primary" @click="onSave" :disabled="cart.length === 0" class="shadow-md" />
+        <Button 
+          label="Guardar Registro" 
+          icon="pi pi-save" 
+          severity="primary" 
+          @click="onSave" 
+          :disabled="cart.length === 0" 
+          :loading="saving"
+          class="shadow-md" 
+        />
       </div>
     </div>
 
@@ -302,7 +334,7 @@ const formatCurrency = (value: number) => {
             <div class="field">
               <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Proveedor</label>
               <InputGroup>
-                <Dropdown 
+                <Select 
                   v-model="purchase.id_proveedor" 
                   :options="proveedores" 
                   optionLabel="nombre" 
@@ -325,7 +357,7 @@ const formatCurrency = (value: number) => {
 
             <div class="field">
               <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Fecha Emisión</label>
-              <Calendar v-model="purchase.fecha" dateFormat="yy-mm-dd" showIcon class="w-full" />
+              <DatePicker v-model="purchase.fecha" dateFormat="yy-mm-dd" showIcon class="w-full" />
             </div>
 
             <!-- Total display for tablet/small screens inside sidebar -->

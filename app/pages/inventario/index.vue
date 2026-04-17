@@ -15,6 +15,7 @@ const sortField = ref('nombre')
 const sortOrder = ref(1)
 const categorias = ref<CategoriaProducto[]>([])
 const selectedCategoriaId = ref<string | null>(null)
+const soloActivos = ref(true)
 
 const loadCategorias = async () => {
   try {
@@ -33,7 +34,8 @@ const loadProductos = async () => {
       rows: 20,
       sortField: sortField.value,
       sortOrder: sortOrder.value,
-      categoriaId: selectedCategoriaId.value
+      categoriaId: selectedCategoriaId.value,
+      soloActivos: soloActivos.value
     })
     productos.value = result.data
     total.value = result.total
@@ -63,6 +65,12 @@ const handleSort = (event: { sortField: string; sortOrder: number }) => {
 
 const handleFilterCategoria = (id: string | null) => {
   selectedCategoriaId.value = id
+  currentPage.value = 0
+  loadProductos()
+}
+
+const handleFilterActivos = (value: boolean) => {
+  soloActivos.value = value
   currentPage.value = 0
   loadProductos()
 }
@@ -129,12 +137,14 @@ onMounted(async () => {
       :sort-order="sortOrder"
       :categorias="categorias"
       :selected-categoria-id="selectedCategoriaId"
+      :solo-activos="soloActivos"
       @page="handlePage"
       @search="handleSearch"
       @sort="handleSort"
       @edit="handleEdit"
       @delete="handleDelete"
       @filter-categoria="handleFilterCategoria"
+      @filter-activos="handleFilterActivos"
     />
 
     <Dialog

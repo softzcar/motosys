@@ -18,7 +18,7 @@ const buscar = useDebounceFn(async () => {
   }
   loading.value = true
   try {
-    const { data } = await fetchProductos({ search: search.value, rows: 10 })
+    const { data } = await fetchProductos({ search: search.value, rows: 10, soloActivos: true })
     resultados.value = data
   } catch {
     resultados.value = []

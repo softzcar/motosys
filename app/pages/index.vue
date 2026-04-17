@@ -409,7 +409,7 @@ const stats = computed(() => [
               <td colspan="6" class="py-8 text-center text-slate-500">No hay ventas registradas recientemente.</td>
             </tr>
             <tr v-for="venta in ultimasVentas" :key="venta.id" class="group hover:bg-slate-50 transition-colors">
-              <td class="py-4 font-medium text-slate-900">Venta #{{ venta.id.slice(0, 8) }}</td>
+              <td class="py-4 font-medium text-slate-900">Venta #{{ venta.numero }}</td>
               <td class="py-4 text-slate-600">
                 {{ venta.clientes?.nombre || 'Consumidor Final' }}
               </td>

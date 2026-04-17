@@ -24,8 +24,10 @@ export const useProductos = () => {
       .order(opts?.sortField || 'nombre', { ascending: opts?.sortOrder === 1 })
       .range(from, to)
 
-    if (opts?.soloActivos !== false) {
+    if (opts?.soloActivos === true) {
       query = query.eq('activo', true)
+    } else if (opts?.soloActivos === false) {
+      query = query.eq('activo', false)
     }
 
     if (opts?.maxStock !== undefined) {

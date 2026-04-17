@@ -56,7 +56,7 @@ const formatDateTime = (dateString: string) => {
       </div>
       <div class="text-right">
         <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">N° TICKET</p>
-        <p class="font-black text-slate-900">#{{ venta.id.slice(0, 8).toUpperCase() }}</p>
+        <p class="font-black text-slate-900">#{{ venta.numero }}</p>
         <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-3 mb-1">CAJERO</p>
         <p class="text-xs text-slate-600 font-bold">{{ (venta as any).vendedor?.nombre ?? 'Sistema' }}</p>
         <p class="text-xs text-slate-500 font-medium mt-1">Fecha: {{ formatDate(venta.fecha) }}</p>

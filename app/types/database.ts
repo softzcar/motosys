@@ -30,6 +30,7 @@ export interface Producto {
 
 export interface Venta {
   id: string
+  numero: number
   vendedor_id: string
   total: number
   fecha: string

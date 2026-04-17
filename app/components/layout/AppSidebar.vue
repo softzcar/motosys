@@ -17,11 +17,11 @@ const menuItems = computed(() => {
     { label: 'Inicio', icon: LayoutDashboard, to: '/' },
     { label: 'Punto de Venta', icon: ShoppingCart, to: '/pos' },
     { label: 'Caja', icon: Wallet, to: '/caja' },
+    { label: 'Inventario', icon: Package, to: '/inventario' },
     { label: 'Compras', icon: FileText, to: '/compras' },
     { label: 'Proveedores', icon: Truck, to: '/proveedores' },
     { label: 'Clientes', icon: UserSquare, to: '/clientes' },
     { label: 'Empleados', icon: Users, to: '/empleados' },
-    { label: 'Inventario', icon: Package, to: '/inventario' },
     { label: 'Reportes', icon: BarChart3, to: '/reportes' },
     { label: 'Configuración', icon: Settings, to: '/configuracion' }
   ]

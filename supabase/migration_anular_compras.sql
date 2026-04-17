@@ -81,13 +81,47 @@ BEGIN
 
   -- Revertir stock por cada renglón
   FOR v_detalle IN
-    SELECT id_producto, cantidad
+    SELECT id_producto, cantidad, productos.stock, productos.nombre, productos.codigo_parte
       FROM detalle_compras
+      JOIN productos ON productos.id = detalle_compras.id_producto
       WHERE id_compra = p_compra_id
   LOOP
-    UPDATE productos
-      SET stock = stock - v_detalle.cantidad
-      WHERE id = v_detalle.id_producto;
+    DECLARE
+      v_stock_calculado INT;
+      v_stock_final INT;
+      v_motivo_audit TEXT;
+      v_before public.productos;
+      v_after public.productos;
+    BEGIN
+      v_stock_calculado := v_detalle.stock - v_detalle.cantidad;
+      
+      IF v_stock_calculado < 0 THEN
+        v_stock_final := 0;
+        v_motivo_audit := 'AJUSTE_SEGURIDAD_COMPRA:' || p_compra_id::text || '|CALCULO:' || v_stock_calculado::text;
+      ELSE
+        v_stock_final := v_stock_calculado;
+        v_motivo_audit := 'REVERSION_STOCK_COMPRA:' || p_compra_id::text;
+      END IF;
+
+      -- Capturar estado anterior para auditoría
+      SELECT * INTO v_before FROM productos WHERE id = v_detalle.id_producto;
+
+      -- Actualizar producto
+      UPDATE productos
+        SET stock = v_stock_final,
+            updated_at = now()
+        WHERE id = v_detalle.id_producto
+        RETURNING * INTO v_after;
+
+      -- Insertar registro en auditoría (incidencias)
+      INSERT INTO public.inventario_auditoria (
+        producto_id, codigo_parte, nombre, accion, motivo,
+        valor_anterior, valor_nuevo, usuario_id
+      ) VALUES (
+        v_after.id, v_after.codigo_parte, v_after.nombre, 'UPDATE', v_motivo_audit,
+        to_jsonb(v_before), to_jsonb(v_after), auth.uid()
+      );
+    END;
   END LOOP;
 
   UPDATE compras

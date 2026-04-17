@@ -121,6 +121,42 @@ export const useCompras = () => {
     // para evitar embeds self-referenciales en PostgREST.
     const compra = data as any
 
+    // Si está anulada, buscar posibles registros de auditoría de stock
+    if (compra.anulada && compra.detalle_compras) {
+      console.log('Buscando ajustes de seguridad para compra:', id)
+      const { data: audits } = await client
+        .from('inventario_auditoria')
+        .select('producto_id, motivo')
+        .ilike('motivo', `%${id}%`)
+      
+      console.log('Auditorías encontradas:', audits)
+
+      if (audits && audits.length > 0) {
+        compra.detalle_compras = compra.detalle_compras.map((d: any) => {
+          const pId = d.id_producto || d.producto_id
+          const audit = audits.find(a => 
+            a.producto_id === pId && 
+            (a.motivo.includes('AJUSTE_SEGURIDAD') || a.motivo.includes('ajuste'))
+          )
+          
+          if (audit) {
+            console.log('Ajuste detectado para producto:', pId)
+            // Extraer el cálculo real del nuevo formato o del antiguo
+            let valorReal = 'Stock insuficiente'
+            if (audit.motivo.includes('|CALCULO:')) {
+              valorReal = audit.motivo.split('|CALCULO:')[1]
+            } else {
+              const matches = audit.motivo.match(/\(Cálculo real: (.*?)\)/)
+              if (matches) valorReal = matches[1]
+            }
+            
+            return { ...d, ajuste_audit: `Ajuste: ${valorReal}` }
+          }
+          return d
+        })
+      }
+    }
+
     let corrige = null
     if (compra.corrige_compra_id) {
       const { data: corrigeData } = await client
