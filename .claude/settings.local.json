@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash([ -d \"/home/developer/Documentos/dev/motosys/$dir\" ])",
+      "Bash(find *)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "Bash(timeout 45 npm run dev)",
+      "Bash(tee /tmp/dev-output.log)",
+      "Bash(curl *)",
+      "Bash(pkill -f \"nuxt dev\")",
+      "Bash(npm run *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(kill 117361)",
+      "Bash(pkill -f \"nuxt dev.*3001\")",
+      "Bash(grep -v grep echo \"---\" ss -tlnp)"
+    ]
+  }
+}

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { Package, ShoppingCart, BarChart3, Settings, Users, LayoutDashboard, UserSquare, Truck, FileText, Wallet } from 'lucide-vue-next'
+import { Package, ShoppingCart, BarChart3, Settings, Users, LayoutDashboard, UserSquare, Truck, FileText, Wallet, X } from 'lucide-vue-next'
 
 const { isAdmin } = usePerfil()
 const route = useRoute()
+
+const emit = defineEmits<{ close: [] }>()
 
 const menuItems = computed(() => {
   if (!isAdmin.value) {
@@ -32,13 +34,21 @@ const isActive = (path: string) => {
 </script>
 
 <template>
-  <aside class="w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0">
-    <div class="h-16 px-6 border-b border-white/10 flex items-center gap-2">
-      <img src="/android-icon-48x48.png" alt="motosys logo" class="w-7 h-7 rounded-md" />
-      <span class="text-lg font-bold tracking-tight text-white/90">motosys</span>
+  <aside class="w-full lg:w-64 bg-slate-900 text-white flex flex-col h-full shrink-0">
+    <div class="h-16 px-6 border-b border-white/10 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <img src="/android-icon-48x48.png" alt="motosys logo" class="w-7 h-7 rounded-md" />
+        <span class="text-lg font-bold tracking-tight text-white/90">motosys</span>
+      </div>
+      <button 
+        class="lg:hidden p-1 text-slate-400 hover:text-white transition-colors"
+        @click="emit('close')"
+      >
+        <X :size="20" />
+      </button>
     </div>
 
-    <nav class="flex-1 p-4 flex flex-col gap-1">
+    <nav class="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
       <NuxtLink
         v-for="item in menuItems"
         :key="item.to"
@@ -47,6 +57,7 @@ const isActive = (path: string) => {
         :class="isActive(item.to)
           ? 'bg-blue-600 text-white'
           : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+        @click="emit('close')"
       >
         <component :is="item.icon" :size="20" />
         {{ item.label }}

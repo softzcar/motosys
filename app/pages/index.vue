@@ -13,11 +13,12 @@ import {
 } from 'lucide-vue-next'
 
 const { perfil, isAdmin } = usePerfil()
-const { fetchVentas } = useVentas()
+const { fetchVentas, fetchVentaById } = useVentas()
 const { fetchInventarioStats } = useProductos()
 const { fetchClientes } = useClientes()
 const { fetchTasas } = useTasas()
 const client = useSupabaseClient()
+const toast = useToast()
 
 // Redireccionar si es vendedor
 watch(isAdmin, (admin) => {
@@ -45,9 +46,17 @@ const selectedVenta = ref<any>(null)
 const showDetailDialog = ref(false)
 const showTasasDialog = ref(false)
 
-const verDetalleVenta = (venta: any) => {
-  selectedVenta.value = venta
-  showDetailDialog.value = true
+const verDetalleVenta = async (venta: any) => {
+  try {
+    loading.value = true
+    const fullVenta = await fetchVentaById(venta.id)
+    selectedVenta.value = fullVenta
+    showDetailDialog.value = true
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: 'Error al cargar detalle', detail: e.message, life: 3000 })
+  } finally {
+    loading.value = false
+  }
 }
 
 // Formatear moneda
@@ -440,10 +449,10 @@ const stats = computed(() => [
       v-model:visible="showDetailDialog" 
       modal 
       header="Detalle de Venta" 
-      :style="{ width: '50rem' }" 
+      :style="{ width: '750px' }" 
       :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
     >
-      <ReportesVentaDetalle v-if="selectedVenta" :venta="selectedVenta" />
+      <ReportesVentaReciboDetalle v-if="selectedVenta" :venta="selectedVenta" />
     </Dialog>
 
     <Dialog 

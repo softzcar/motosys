@@ -1,0 +1,61 @@
+@layer theme, primevue, base, components, utilities;
+
+@import "tailwindcss" layer(base);
+
+@layer base {
+  html {
+    font-size: 14px; /* Reducción global de escala de 16px a 14px */
+  }
+}
+
+@layer theme {
+  :root {
+    --ms-primary: #0f172a;
+    --ms-accent: #3b82f6;
+    --ms-danger: #ef4444;
+    --ms-success: #22c55e;
+  }
+}
+
+@layer components {
+  /* Optimizacion global para botones cuadrados (estilo POS) en tema Lara */
+  .p-button.aspect-square {
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 2.5rem; /* Asegura un tamaño táctil mínimo */
+  }
+}
+
+@layer utilities {
+  .pos-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 1rem;
+    height: calc(100vh - 5rem);
+  }
+
+  @media (max-width: 768px) {
+    .pos-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+  }
+}
