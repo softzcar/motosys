@@ -22,6 +22,7 @@ export interface Producto {
   precio_venta: number
   imagen_url: string | null
   activo: boolean
+  ubicacion: string | null
   categoria_id: string | null
   categorias_productos?: CategoriaProducto
   created_at: string

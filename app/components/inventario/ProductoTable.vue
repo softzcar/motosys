@@ -11,6 +11,8 @@ defineProps<{
   sortOrder?: number
   categorias: CategoriaProducto[]
   selectedCategoriaId?: string | null
+  ubicaciones?: string[]
+  selectedUbicacion?: string | null
   soloActivos?: boolean
 }>()
 
@@ -21,6 +23,7 @@ const emit = defineEmits<{
   search: [term: string]
   sort: [event: { sortField: string; sortOrder: number }]
   'filter-categoria': [id: string | null]
+  'filter-ubicacion': [val: string | null]
   'filter-activos': [value: boolean]
 }>()
 
@@ -34,6 +37,10 @@ const onSearch = useDebounceFn(() => {
 
 const onCategoriaChange = (value: string | null) => {
   emit('filter-categoria', value)
+}
+
+const onUbicacionChange = (value: string | null) => {
+  emit('filter-ubicacion', value)
 }
 
 const onActivosChange = (event: any) => {
@@ -60,8 +67,16 @@ const onActivosChange = (event: any) => {
         option-value="id"
         placeholder="Todas las categorías"
         show-clear
-        class="w-full md:w-56"
+        class="w-full md:w-48"
         @update:model-value="onCategoriaChange"
+      />
+      <Select
+        :model-value="selectedUbicacion"
+        :options="ubicaciones"
+        placeholder="Ubicación/Estante"
+        show-clear
+        class="w-full md:w-48"
+        @update:model-value="onUbicacionChange"
       />
       <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
         <ToggleSwitch :model-value="soloActivos" input-id="toggleActivos" @update:model-value="onActivosChange" />
@@ -87,6 +102,11 @@ const onActivosChange = (event: any) => {
     >
       <Column field="codigo_parte" header="Código" sortable />
       <Column field="nombre" header="Nombre" sortable />
+      <Column field="ubicacion" header="Ubicación" sortable>
+        <template #body="{ data }">
+          <span class="text-xs font-medium text-slate-600">{{ data.ubicacion || '-' }}</span>
+        </template>
+      </Column>
       <Column header="Categoría" sortable field="categoria_id">
         <template #body="{ data }">
           <Tag

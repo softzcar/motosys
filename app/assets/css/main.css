@@ -48,14 +48,29 @@
   body * {
     visibility: hidden;
   }
+  
+  /* Contenedores permitidos para impresión */
   .print-area,
-  .print-area * {
+  .print-area *,
+  .print-report,
+  .print-report * {
     visibility: visible;
   }
+
+  /* Estilo para tickets térmicos (80mm) */
   .print-area {
     position: absolute;
     left: 0;
     top: 0;
     width: 80mm;
+  }
+
+  /* Estilo para reportes de página completa (Carta/A4) */
+  .print-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background-color: white;
   }
 }

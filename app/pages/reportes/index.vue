@@ -17,6 +17,7 @@ const { fetchCierres, getCierreById } = useCierresCaja()
 const { isAdmin } = usePerfil()
 
 // --- ESTADOS ---
+const activeTab = ref('ventas')
 
 // Filtros Globales (Periodo)
 const range = ref<Date[]>([])
@@ -64,7 +65,7 @@ const inventario = ref<any[]>([])
 const loadingInventario = ref(false)
 const totalInventarioRecords = ref(0)
 const sortFieldInventario = ref('stock')
-const sortOrderInventario = ref(1) // Ascendente por defecto para ver qué falta
+const sortOrderInventario = ref(1)
 const searchProducto = ref('')
 const categoriaId = ref<string | null>(null)
 const categorias = ref<any[]>([])
@@ -127,7 +128,7 @@ const loadVentas = async () => {
       desde: dateRangeStr.value.desde,
       hasta: dateRangeStr.value.hasta,
       page: 0,
-      rows: 100, // En reportes traemos más
+      rows: 100,
       sortField: sortFieldVentas.value,
       sortOrder: sortOrderVentas.value,
       searchCliente: searchCliente.value,
@@ -233,7 +234,7 @@ const loadComprasStats = async () => {
     if (error) throw error
 
     comprasStats.value = {
-      totalGastado: data.reduce((acc, c) => acc + Number(v.total), 0),
+      totalGastado: data.reduce((acc, c) => acc + Number(c.total), 0),
       totalFacturas: count ?? 0
     }
   } catch {
@@ -267,7 +268,7 @@ const loadAuditoria = async () => {
   try {
     let query = client
       .from('inventario_auditoria')
-      .select('*, usuario:perfiles(nombre)', { count: 'exact' })
+      .select('*, usuario:perfiles!fk_inventario_auditoria_usuario_perfil(nombre)', { count: 'exact' })
       .gte('created_at', dateRangeStr.value.desde)
       .lte('created_at', dateRangeStr.value.hasta)
       .order('created_at', { ascending: false })
@@ -343,6 +344,10 @@ const irACorreccionVenta = (ventaId: string) => {
   navigateTo(`/pos?corrigiendo=${ventaId}`)
 }
 
+const imprimirReporte = () => {
+  window.print()
+}
+
 // Anulación de venta
 const anularVentaModal = ref(false)
 const ventaAAnular = ref<any>(null)
@@ -370,7 +375,6 @@ const confirmarAnularVenta = async () => {
     loadVentas()
     loadVentasStats()
     
-    // Sugerir corrección
     toast.add({
        severity: 'info',
        summary: '¿Corregir Venta?',
@@ -393,6 +397,7 @@ const debouncedSearchCompras = useDebounceFn(loadCompras, 500)
 const debouncedSearchAuditoria = useDebounceFn(loadAuditoria, 500)
 
 const formatCurrency = (value: number) => {
+  if (value === undefined || value === null) return '$0.00'
   return value.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })
 }
 
@@ -430,7 +435,7 @@ const formatDateTime = (dateString: string) => {
     </div>
 
     <!-- Pestañas de Reportes -->
-    <Tabs value="ventas">
+    <Tabs :value="activeTab" @update:value="(val) => activeTab = val">
       <TabList>
         <Tab value="ventas" class="flex items-center gap-2">
           <TrendingUp :size="16" /> Ventas e Ingresos
@@ -453,7 +458,6 @@ const formatDateTime = (dateString: string) => {
         <!-- 1. VENTAS E INGRESOS -->
         <TabPanel value="ventas">
            <div class="space-y-6">
-             <!-- Vales de Resumen -->
              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                  <div class="p-3 bg-emerald-50 rounded-lg text-emerald-600">
@@ -484,10 +488,12 @@ const formatDateTime = (dateString: string) => {
                </div>
              </div>
 
-             <!-- Tabla de Ventas -->
              <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-                   <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Ventas</h3>
+                   <div class="flex items-center gap-4">
+                      <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Ventas</h3>
+                      <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
+                   </div>
                    <div class="flex items-center gap-3">
                      <IconField class="w-64">
                        <InputIcon class="pi pi-search" />
@@ -502,16 +508,10 @@ const formatDateTime = (dateString: string) => {
 
                 <DataTable 
                    :value="ventas" 
-                   lazy 
-                   paginator 
-                   :rows="10" 
-                   :totalRecords="totalVentasRecords" 
-                   :loading="loadingVentas"
+                   lazy paginator :rows="10" :totalRecords="totalVentasRecords" :loading="loadingVentas"
                    @sort="e => { sortFieldVentas = e.sortField; sortOrderVentas = e.sortOrder; loadVentas() }"
-                   :sortField="sortFieldVentas"
-                   :sortOrder="sortOrderVentas"
-                   stripedRows
-                   class="p-datatable-sm"
+                   :sortField="sortFieldVentas" :sortOrder="sortOrderVentas"
+                   stripedRows class="p-datatable-sm"
                 >
                    <Column field="numero" header="N° Ticket" sortable>
                        <template #body="slotProps">
@@ -555,24 +555,13 @@ const formatDateTime = (dateString: string) => {
                            </Button>
                            <Button
                              v-if="isAdmin && !slotProps.data.anulada && !slotProps.data.cierre_id"
-                             severity="secondary"
-                             text
-                             rounded
-                             @click="openAnularVentaModal(slotProps.data)"
-                             class="text-rose-600 hover:bg-rose-50 p-2"
-                             v-tooltip.top="'Anular venta'"
+                             severity="secondary" text rounded @click="openAnularVentaModal(slotProps.data)" class="text-rose-600 hover:bg-rose-50 p-2" v-tooltip.top="'Anular venta'"
                            >
                              <Ban class="w-5 h-5" />
                            </Button>
                          </div>
                        </template>
                     </Column>
-                   <template #empty>
-                     <div class="flex flex-col items-center justify-center py-10 text-slate-400">
-                       <TrendingUp class="w-10 h-10 mb-2 opacity-20" />
-                       <p class="font-medium">No se encontraron ventas en este período</p>
-                     </div>
-                   </template>
                 </DataTable>
              </div>
            </div>
@@ -580,71 +569,60 @@ const formatDateTime = (dateString: string) => {
 
         <!-- 2. CIERRES DE CAJA -->
         <TabPanel value="cierres">
-           <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-                 <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight text-center">Historial de Cierres de Caja</h3>
+           <div class="space-y-6">
+              <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Cierres de Caja</h3>
+                    <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
+                 </div>
+                 <DataTable 
+                    :value="cierres" lazy paginator :rows="10" :totalRecords="totalCierresRecords" :loading="loadingCierres"
+                    @sort="e => { sortFieldCierres = e.sortField; sortOrderCierres = e.sortOrder; loadCierres() }"
+                    :sortField="sortFieldCierres" :sortOrder="sortOrderCierres"
+                    stripedRows class="p-datatable-sm"
+                 >
+                    <Column field="fecha" header="Fecha de Cierre" sortable>
+                       <template #body="slotProps">
+                          {{ formatDateTime(slotProps.data.fecha) }}
+                       </template>
+                    </Column>
+                    <Column field="responsable.nombre" header="Cajero">
+                       <template #body="slotProps">
+                          <span class="font-bold text-slate-700">{{ slotProps.data.responsable?.nombre }}</span>
+                       </template>
+                    </Column>
+                    <Column field="total_ventas_usd" header="Total Ventas (USD)">
+                       <template #body="slotProps">
+                          {{ formatCurrency(slotProps.data.total_ventas_usd) }}
+                       </template>
+                    </Column>
+                    <Column field="total_caja_usd" header="Efectivo en Caja">
+                       <template #body="slotProps">
+                          {{ formatCurrency(slotProps.data.total_caja_usd) }}
+                       </template>
+                    </Column>
+                    <Column field="diferencia_usd" header="Diferencia">
+                       <template #body="slotProps">
+                          <span :class="Number(slotProps.data.diferencia_usd) < 0 ? 'text-rose-600' : 'text-emerald-600'" class="font-black">
+                             {{ formatCurrency(slotProps.data.diferencia_usd) }}
+                          </span>
+                       </template>
+                    </Column>
+                    <Column :exportable="false" header="Ver">
+                       <template #body="slotProps">
+                          <Button severity="secondary" text rounded @click="openCierreDetails(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2">
+                             <Eye class="w-5 h-5" />
+                          </Button>
+                       </template>
+                    </Column>
+                 </DataTable>
               </div>
-              <DataTable 
-                 :value="cierres" 
-                 lazy 
-                 paginator 
-                 :rows="10" 
-                 :totalRecords="totalCierresRecords" 
-                 :loading="loadingCierres"
-                 @sort="e => { sortFieldCierres = e.sortField; sortOrderCierres = e.sortOrder; loadCierres() }"
-                 :sortField="sortFieldCierres"
-                 :sortOrder="sortOrderCierres"
-                 stripedRows
-                 class="p-datatable-sm"
-              >
-                 <Column field="fecha" header="Fecha de Cierre" sortable>
-                    <template #body="slotProps">
-                       {{ formatDateTime(slotProps.data.fecha) }}
-                    </template>
-                 </Column>
-                 <Column field="responsable.nombre" header="Cajero">
-                    <template #body="slotProps">
-                       <span class="font-bold text-slate-700">{{ slotProps.data.responsable?.nombre }}</span>
-                    </template>
-                 </Column>
-                 <Column field="total_ventas_usd" header="Total Ventas (USD)">
-                    <template #body="slotProps">
-                       {{ formatCurrency(slotProps.data.total_ventas_usd) }}
-                    </template>
-                 </Column>
-                 <Column field="total_caja_usd" header="Efectivo en Caja">
-                    <template #body="slotProps">
-                       {{ formatCurrency(slotProps.data.total_caja_usd) }}
-                    </template>
-                 </Column>
-                 <Column field="diferencia_usd" header="Diferencia">
-                    <template #body="slotProps">
-                       <span :class="Number(slotProps.data.diferencia_usd) < 0 ? 'text-rose-600' : 'text-emerald-600'" class="font-black">
-                          {{ formatCurrency(slotProps.data.diferencia_usd) }}
-                       </span>
-                    </template>
-                 </Column>
-                 <Column :exportable="false" header="Ver">
-                    <template #body="slotProps">
-                       <Button severity="secondary" text rounded @click="openCierreDetails(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2">
-                          <Eye class="w-5 h-5" />
-                       </Button>
-                    </template>
-                 </Column>
-                 <template #empty>
-                   <div class="flex flex-col items-center justify-center py-10 text-slate-400">
-                     <ClipboardList class="w-10 h-10 mb-2 opacity-20" />
-                     <p class="font-medium">No hay cierres registrados en este período</p>
-                   </div>
-                 </template>
-              </DataTable>
            </div>
         </TabPanel>
 
         <!-- 3. INVENTARIO Y STOCK -->
         <TabPanel value="inventario">
            <div class="space-y-6">
-             <!-- Vales de Resumen Inventario -->
              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                  <div class="p-3 bg-blue-50 rounded-lg text-blue-600">
@@ -666,40 +644,29 @@ const formatDateTime = (dateString: string) => {
                </div>
              </div>
 
-             <!-- Tabla de Inventario -->
              <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-                   <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Estado de Almacén</h3>
+                   <div class="flex items-center gap-4">
+                      <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Estado de Almacén</h3>
+                      <Button label="Imprimir Planilla" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
+                   </div>
                    <div class="flex items-center gap-3">
                      <IconField class="w-64">
                        <InputIcon class="pi pi-search" />
                        <InputText v-model="searchProducto" placeholder="Buscar producto o código..." class="w-full" @input="debouncedSearchInventario" />
                      </IconField>
                      <Select
-                        v-model="categoriaId"
-                        :options="categorias"
-                        optionLabel="nombre"
-                        optionValue="id"
-                        placeholder="Categoría..."
-                        showClear
-                        class="w-48"
-                        @change="loadInventario"
+                        v-model="categoriaId" :options="categorias" optionLabel="nombre" optionValue="id"
+                        placeholder="Categoría..." showClear class="w-48" @change="loadInventario"
                      />
                    </div>
                 </div>
 
                 <DataTable 
-                   :value="inventario" 
-                   lazy 
-                   paginator 
-                   :rows="20" 
-                   :totalRecords="totalInventarioRecords" 
-                   :loading="loadingInventario"
+                   :value="inventario" lazy paginator :rows="20" :totalRecords="totalInventarioRecords" :loading="loadingInventario"
                    @sort="e => { sortFieldInventario = e.sortField; sortOrderInventario = e.sortOrder; loadInventario() }"
-                   :sortField="sortFieldInventario"
-                   :sortOrder="sortOrderInventario"
-                   stripedRows
-                   class="p-datatable-sm"
+                   :sortField="sortFieldInventario" :sortOrder="sortOrderInventario"
+                   stripedRows class="p-datatable-sm"
                 >
                    <Column field="codigo_parte" header="Código" sortable></Column>
                    <Column field="nombre" header="Producto" sortable></Column>
@@ -715,18 +682,9 @@ const formatDateTime = (dateString: string) => {
                    </Column>
                    <Column field="activo" header="Estado" sortable>
                      <template #body="slotProps">
-                       <Tag 
-                         :value="slotProps.data.activo ? 'ACTIVO' : 'INACTIVO'" 
-                         :severity="slotProps.data.activo ? 'success' : 'secondary'" 
-                       />
+                       <Tag :value="slotProps.data.activo ? 'ACTIVO' : 'INACTIVO'" :severity="slotProps.data.activo ? 'success' : 'secondary'" />
                      </template>
                    </Column>
-                   <template #empty>
-                     <div class="flex flex-col items-center justify-center py-10 text-slate-400">
-                       <Package class="w-10 h-10 mb-2 opacity-20" />
-                       <p class="font-medium">No se encontraron productos en el inventario</p>
-                     </div>
-                   </template>
                 </DataTable>
              </div>
            </div>
@@ -735,10 +693,12 @@ const formatDateTime = (dateString: string) => {
         <!-- 4. PROVEEDORES Y COMPRAS -->
         <TabPanel value="compras">
            <div class="space-y-6">
-             <!-- Tabla de Compras -->
              <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-                   <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Compras y Suministros</h3>
+                   <div class="flex items-center gap-4">
+                      <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Compras y Suministros</h3>
+                      <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
+                   </div>
                    <div class="flex items-center gap-3">
                      <IconField class="w-64">
                        <InputIcon class="pi pi-search" />
@@ -752,17 +712,10 @@ const formatDateTime = (dateString: string) => {
                 </div>
 
                 <DataTable 
-                   :value="compras" 
-                   lazy 
-                   paginator 
-                   :rows="10" 
-                   :totalRecords="totalComprasRecords" 
-                   :loading="loadingCompras"
+                   :value="compras" lazy paginator :rows="10" :totalRecords="totalComprasRecords" :loading="loadingCompras"
                    @sort="e => { sortFieldCompras = e.sortField; sortOrderCompras = e.sortOrder; loadCompras() }"
-                   :sortField="sortFieldCompras"
-                   :sortOrder="sortOrderCompras"
-                   stripedRows
-                   class="p-datatable-sm"
+                   :sortField="sortFieldCompras" :sortOrder="sortOrderCompras"
+                   stripedRows class="p-datatable-sm"
                 >
                    <Column field="numero" header="N° Ticket" sortable>
                        <template #body="slotProps">
@@ -785,12 +738,6 @@ const formatDateTime = (dateString: string) => {
                        <span class="font-black text-slate-800" :class="{ 'line-through': slotProps.data.anulada }">{{ formatCurrency(slotProps.data.total) }}</span>
                      </template>
                    </Column>
-                   <Column header="Estado" field="anulada" sortable>
-                     <template #body="slotProps">
-                       <Tag v-if="slotProps.data.anulada" severity="danger" value="ANULADA" />
-                       <Tag v-else severity="success" value="Vigente" />
-                     </template>
-                   </Column>
                    <Column :exportable="false" header="Acciones">
                        <template #body="slotProps">
                          <Button severity="secondary" text rounded @click="openPurchaseDetails(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2">
@@ -798,12 +745,6 @@ const formatDateTime = (dateString: string) => {
                          </Button>
                        </template>
                     </Column>
-                   <template #empty>
-                     <div class="flex flex-col items-center justify-center py-10 text-slate-400">
-                       <ShoppingCart class="w-10 h-10 mb-2 opacity-20" />
-                       <p class="font-medium">No se registraron compras en este período</p>
-                     </div>
-                   </template>
                 </DataTable>
              </div>
            </div>
@@ -821,14 +762,8 @@ const formatDateTime = (dateString: string) => {
               </div>
 
               <DataTable 
-                 :value="auditoria" 
-                 lazy 
-                 paginator 
-                 :rows="15" 
-                 :totalRecords="totalAuditoriaRecords" 
-                 :loading="loadingAuditoria"
-                 stripedRows
-                 class="p-datatable-sm text-xs"
+                 :value="auditoria" lazy paginator :rows="15" :totalRecords="totalAuditoriaRecords" :loading="loadingAuditoria"
+                 stripedRows class="p-datatable-sm text-xs"
               >
                  <Column field="created_at" header="Fecha">
                     <template #body="slotProps">
@@ -842,13 +777,6 @@ const formatDateTime = (dateString: string) => {
                     </template>
                  </Column>
                  <Column field="nombre" header="Producto"></Column>
-                 <Column header="Motivo">
-                    <template #body="slotProps">
-                       <span class="text-xs text-slate-600 italic truncate block max-w-[280px]">
-                          {{ slotProps.data.motivo }}
-                       </span>
-                    </template>
-                 </Column>
                  <Column :exportable="false" header="Detalle">
                     <template #body="slotProps">
                        <Button severity="secondary" text rounded @click="openAuditoriaDetail(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2">
@@ -856,12 +784,6 @@ const formatDateTime = (dateString: string) => {
                        </Button>
                     </template>
                  </Column>
-                 <template #empty>
-                   <div class="flex flex-col items-center justify-center py-10 text-slate-400">
-                     <History class="w-10 h-10 mb-2 opacity-20" />
-                     <p class="font-medium">Sin registros de auditoría en el período</p>
-                   </div>
-                 </template>
               </DataTable>
            </div>
         </TabPanel>
@@ -869,57 +791,35 @@ const formatDateTime = (dateString: string) => {
     </Tabs>
 
     <!-- --- DIÁLOGOS --- -->
-
-    <!-- Modal Detalle Venta -->
-    <Dialog v-model:visible="detailsModal" modal header="Detalle de Venta" :style="{ width: '750px' }" :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
+    <Dialog v-model:visible="detailsModal" modal header="Detalle de Venta" :style="{ width: '750px' }">
        <div v-if="loadingDetails" class="flex flex-col items-center justify-center p-12">
           <span class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mb-4"></span>
           <span class="text-slate-500 font-medium">Cargando factura...</span>
        </div>
-       
        <div v-else-if="selectedVenta" class="pt-2">
           <ReportesVentaReciboDetalle :venta="selectedVenta" />
        </div>
-
        <template #footer>
           <Button label="Cerrar" text severity="secondary" @click="detailsModal = false" class="mt-2" />
        </template>
     </Dialog>
 
-    <!-- Modal Detalle Compra (UNIFICADO) -->
-    <Dialog 
-      v-model:visible="purchaseDetailsModal" 
-      modal 
-      header="Detalle de Compra" 
-      :style="{ width: '700px' }"
-      :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
-    >
+    <Dialog v-model:visible="purchaseDetailsModal" modal header="Detalle de Compra" :style="{ width: '700px' }">
       <div v-if="loadingPurchaseDetails" class="flex flex-col items-center justify-center p-12">
         <span class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mb-4"></span>
         <span class="text-slate-500 font-medium">Cargando factura...</span>
       </div>
-
       <ReportesCompraDetalleRecibo v-else-if="selectedPurchase" :compra="selectedPurchase" />
-
       <template #footer>
         <Button label="Cerrar" text severity="secondary" @click="purchaseDetailsModal = false" class="mt-2" />
       </template>
     </Dialog>
 
-     <!-- Modal Detalle Cierre -->
-     <Dialog v-model:visible="closureDetailsModal" :style="{ width: '750px' }" modal :closable="!loadingClosureDetails" class="p-fluid">
-        <template #header>
-           <div class="flex items-center gap-2">
-              <ClipboardList class="w-6 h-6 text-slate-500" />
-              <h2 class="font-bold text-xl text-slate-800 m-0">Detalle de Cierre</h2>
-           </div>
-        </template>
-        
+     <Dialog v-model:visible="closureDetailsModal" :style="{ width: '750px' }" modal header="Detalle de Cierre">
         <div v-if="loadingClosureDetails" class="flex flex-col items-center justify-center p-12">
            <span class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mb-4"></span>
            <span class="text-slate-500 font-medium">Cargando reporte...</span>
         </div>
-        
         <div v-else-if="selectedClosure" class="space-y-6 pt-2">
            <div class="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
               <div>
@@ -931,35 +831,17 @@ const formatDateTime = (dateString: string) => {
                  <p class="font-bold text-slate-800">{{ formatDateTime(selectedClosure.fecha) }}</p>
               </div>
            </div>
-
            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
               <span class="text-xs font-bold text-blue-600 uppercase">Ventas totales registradas</span>
               <span class="text-xl font-black text-blue-700">{{ formatCurrency(selectedClosure.total_ventas_usd) }}</span>
            </div>
-
-           <div class="grid grid-cols-2 gap-4">
-              <div class="p-3 bg-white border border-slate-100 rounded-lg">
-                 <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Efectivo en Caja</p>
-                 <p class="text-lg font-black text-slate-800">{{ formatCurrency(selectedClosure.total_caja_usd) }}</p>
-              </div>
-              <div class="p-3 border rounded-lg" :class="Number(selectedClosure.diferencia_usd) < 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'">
-                 <p class="text-[10px] font-bold uppercase mb-1" :class="Number(selectedClosure.diferencia_usd) < 0 ? 'text-rose-600' : 'text-emerald-600'">Diferencia</p>
-                 <p class="text-lg font-black" :class="Number(selectedClosure.diferencia_usd) < 0 ? 'text-rose-700' : 'text-emerald-700'">{{ formatCurrency(selectedClosure.diferencia_usd) }}</p>
-              </div>
-           </div>
-           
-           <div v-if="selectedClosure.observaciones" class="p-3 bg-slate-50 border border-slate-100 rounded-lg italic text-xs text-slate-600">
-              "{{ selectedClosure.observaciones }}"
-           </div>
         </div>
-        
         <template #footer>
            <Button label="Cerrar" text severity="secondary" @click="closureDetailsModal = false" />
         </template>
      </Dialog>
 
-     <!-- Modal Detalle Auditoría -->
-     <Dialog v-model:visible="auditoriaDetailModal" :style="{ width: '600px' }" modal header="Detalle de Auditoría" class="p-fluid">
+     <Dialog v-model:visible="auditoriaDetailModal" :style="{ width: '600px' }" modal header="Detalle de Auditoría">
         <div v-if="selectedAuditoria" class="space-y-4 pt-2">
            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
               <p class="text-xs font-bold text-slate-400 uppercase mb-2">Producto Afectado</p>
@@ -968,21 +850,9 @@ const formatDateTime = (dateString: string) => {
                  <span class="text-xs px-2 py-0.5 bg-slate-200 rounded font-bold">{{ selectedAuditoria.codigo_parte }}</span>
               </div>
            </div>
-           
            <div class="p-3 bg-white rounded-lg border border-slate-200">
               <p class="text-xs font-bold text-slate-400 uppercase mb-1">Motivo Registrado</p>
               <p class="text-sm text-slate-700 italic">"{{ selectedAuditoria.motivo }}"</p>
-           </div>
-
-           <div class="grid grid-cols-2 gap-4">
-              <div>
-                 <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Estado Anterior</p>
-                 <pre class="text-[10px] p-2 bg-slate-900 text-slate-300 rounded overflow-auto h-32">{{ JSON.stringify(selectedAuditoria.valor_anterior, null, 2) }}</pre>
-              </div>
-              <div>
-                 <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Estado Nuevo</p>
-                 <pre class="text-[10px] p-2 bg-slate-900 text-slate-300 rounded overflow-auto h-32">{{ JSON.stringify(selectedAuditoria.valor_nuevo, null, 2) }}</pre>
-              </div>
            </div>
         </div>
         <template #footer>
@@ -990,55 +860,19 @@ const formatDateTime = (dateString: string) => {
         </template>
      </Dialog>
 
-     <!-- Modal Anular Venta -->
-     <Dialog v-model:visible="anularVentaModal" :style="{ width: '560px' }" modal :closable="!anulandoVenta" class="p-fluid">
-        <template #header>
-           <div class="flex items-center gap-2">
-              <Ban class="w-6 h-6 text-rose-600" />
-              <h2 class="font-bold text-xl text-slate-800 m-0">Anular venta</h2>
-           </div>
-        </template>
-
+     <Dialog v-model:visible="anularVentaModal" :style="{ width: '560px' }" modal header="Anular venta">
         <div v-if="ventaAAnular" class="space-y-4 pt-2">
            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
-              <p class="text-slate-700">
-                 Venta <b>#{{ ventaAAnular.id.slice(0,8).toUpperCase() }}</b>
-              </p>
-              <div class="flex justify-between items-center mt-1">
-                 <p class="text-slate-500 text-xs">
-                    {{ formatDate(ventaAAnular.fecha) }} · {{ ventaAAnular.clientes?.nombre || 'Cliente General' }}
-                 </p>
-                 <span class="font-bold text-slate-800">{{ formatCurrency(ventaAAnular.total) }}</span>
-              </div>
+              <p class="text-slate-700">Venta <b>#{{ ventaAAnular.id.slice(0,8).toUpperCase() }}</b></p>
            </div>
-
            <div>
-              <label for="motivoAnularVenta" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                 Motivo de anulación <span class="text-rose-600">*</span>
-              </label>
-              <Textarea
-                 id="motivoAnularVenta"
-                 v-model="motivoAnulacionVenta"
-                 rows="3"
-                 class="w-full"
-                 placeholder="Describe el motivo (mínimo 10 caracteres)"
-                 :disabled="anulandoVenta"
-              />
-              <p class="text-[10px] text-slate-400 mt-1">
-                 {{ motivoAnulacionVenta.trim().length }} / 10 caracteres mínimo
-              </p>
+              <label for="motivoAnularVenta" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Motivo de anulación *</label>
+              <Textarea id="motivoAnularVenta" v-model="motivoAnulacionVenta" rows="3" class="w-full" placeholder="Describe el motivo (mínimo 10 caracteres)" />
            </div>
         </div>
-
         <template #footer>
-           <Button label="Cancelar" text severity="secondary" @click="anularVentaModal = false" :disabled="anulandoVenta" />
-           <Button
-              label="Anular venta"
-              severity="danger"
-              @click="confirmarAnularVenta"
-              :loading="anulandoVenta"
-              :disabled="motivoAnulacionVenta.trim().length < 10"
-           />
+           <Button label="Cancelar" text severity="secondary" @click="anularVentaModal = false" />
+           <Button label="Anular venta" severity="danger" @click="confirmarAnularVenta" :disabled="motivoAnulacionVenta.trim().length < 10" />
         </template>
      </Dialog>
 
@@ -1057,5 +891,33 @@ const formatDateTime = (dateString: string) => {
            </div>
         </template>
      </Toast>
+
+     <!-- REPORTES IMPRIMIBLES -->
+     <div class="hidden print:block">
+         <div v-show="activeTab === 'ventas'">
+             <ReportesVentasResumenReport 
+                :ventas="ventas" 
+                :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchCliente }" 
+             />
+         </div>
+         <div v-show="activeTab === 'cierres'">
+             <ReportesCierresHistorialReport 
+                :cierres="cierres" 
+                :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta }" 
+             />
+         </div>
+         <div v-show="activeTab === 'inventario'">
+             <InventarioChecklistReport 
+                :productos="inventario" 
+                :filtros="{ search: searchProducto, categoria: categorias.find(c => c.id === categoriaId)?.nombre }" 
+             />
+         </div>
+         <div v-show="activeTab === 'compras'">
+             <ReportesComprasResumenReport 
+                :compras="compras" 
+                :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchProveedor }" 
+             />
+         </div>
+     </div>
   </div>
 </template>

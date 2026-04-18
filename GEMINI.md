@@ -23,5 +23,14 @@
   </Button>
   ```
 - **Icono:** Usar siempre `Plus` de `lucide-vue-next` con clases `w-5 h-5`. **NO** usar PrimeIcons (`pi pi-plus`) ya que no están disponibles en el proyecto.
-- **Estilo:** `severity="success"` + `class="aspect-square"` (botón cuadrado verde sólido). **NO** usar `outlined` ni `rounded`.
+## Estándares de Reportes Imprimibles (Carta)
+- **Maquetación Obligatoria:** Todos los reportes diseñados para hojas tamaño carta deben seguir estrictamente el patrón establecido en `InventarioChecklistReport.vue`. No se permiten variaciones de estilo o estructura.
+- **Clase de Contenedor:** Utilizar siempre la clase `.print-report` (definida en `main.css`) para el contenedor principal.
+- **Header:** Debe incluir título en mayúsculas negritas, fecha/hora de emisión y el detalle de los filtros aplicados (o "Todos los productos" si no hay filtros).
+- **Cuerpo:** 
+  - **Densidad:** Utilizar fuentes pequeñas (`8px` a `10px`) y espaciados reducidos para maximizar la información por página.
+  - **Tablas:** Bordes en `slate-300`, encabezados con fondo `slate-100` y tipografía `font-black text-[8px]`.
+  - **Agrupación:** Si los datos tienen una jerarquía (ej. estantes), utilizar separadores de sección con fondo `slate-900` y texto blanco.
+- **Footer:** Debe incluir un descargo de responsabilidad ("GUÍA DE TRABAJO...") y numeración de páginas en el formato "Página ____ de ____".
+- **CSS de Impresión:** Asegurar que `@page { size: letter; margin: 1cm; }` y `-webkit-print-color-adjust: exact !important;` estén presentes en el componente.
 

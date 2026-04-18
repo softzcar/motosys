@@ -11,6 +11,7 @@ export const useProductos = () => {
     sortOrder?: number
     soloActivos?: boolean
     categoriaId?: string | null
+    ubicacion?: string | null
     maxStock?: number
   }) => {
     const page = opts?.page ?? 0
@@ -21,8 +22,11 @@ export const useProductos = () => {
     let query = client
       .from('productos')
       .select('*, categorias_productos(nombre)', { count: 'exact' })
-      .order(opts?.sortField || 'nombre', { ascending: opts?.sortOrder === 1 })
-      .range(from, to)
+
+    // Ordenamiento
+    const sortField = opts?.sortField || 'nombre'
+    const isAscending = opts?.sortOrder === 1
+    query = query.order(sortField, { ascending: isAscending })
 
     if (opts?.soloActivos === true) {
       query = query.eq('activo', true)
@@ -38,15 +42,34 @@ export const useProductos = () => {
       query = query.eq('categoria_id', opts.categoriaId)
     }
 
+    if (opts?.ubicacion) {
+      query = query.eq('ubicacion', opts.ubicacion)
+    }
+
     if (opts?.search) {
       query = query.or(
         `nombre.ilike.%${opts.search}%,codigo_parte.ilike.%${opts.search}%`
       )
     }
 
-    const { data, count, error } = await query
+    const { data, count, error } = await query.range(from, to)
     if (error) throw error
     return { data: data as Producto[], total: count ?? 0 }
+  }
+
+  const fetchUbicaciones = async () => {
+    const { data, error } = await client
+      .from('productos')
+      .select('ubicacion')
+    
+    if (error) throw error
+    
+    // Extraer valores únicos, eliminar nulos/vacíos y ordenar alfabéticamente
+    const unique = Array.from(new Set(data.map(i => i.ubicacion)))
+      .filter(val => val !== null && val !== undefined && val.trim() !== '')
+      .sort((a, b) => a.localeCompare(b))
+    
+    return unique
   }
 
   const findByCodigo = async (codigo: string) => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Producto, CategoriaProducto } from '~/types/database'
 
-const { fetchProductos, eliminarProductoConMotivo, friendlyError } = useProductos()
+const { fetchProductos, fetchUbicaciones, eliminarProductoConMotivo, friendlyError } = useProductos()
 const { fetchAllCategorias } = useCategoriasProductos()
 const { isAdmin } = usePerfil()
 const toast = useToast()
@@ -15,7 +15,19 @@ const sortField = ref('nombre')
 const sortOrder = ref(1)
 const categorias = ref<CategoriaProducto[]>([])
 const selectedCategoriaId = ref<string | null>(null)
+const selectedUbicacion = ref<string | null>(null)
+const ubicaciones = ref<string[]>([])
 const soloActivos = ref(true)
+
+const actualizarUbicacionesDesdeProductos = (items: Producto[]) => {
+  const currentSet = new Set(ubicaciones.value)
+  items.forEach(p => {
+    if (p.ubicacion && p.ubicacion.trim()) {
+      currentSet.add(p.ubicacion.trim())
+    }
+  })
+  ubicaciones.value = Array.from(currentSet).sort((a, b) => a.localeCompare(b))
+}
 
 const loadCategorias = async () => {
   try {
@@ -35,10 +47,14 @@ const loadProductos = async () => {
       sortField: sortField.value,
       sortOrder: sortOrder.value,
       categoriaId: selectedCategoriaId.value,
+      ubicacion: selectedUbicacion.value,
       soloActivos: soloActivos.value
     })
     productos.value = result.data
     total.value = result.total
+    
+    // Extraer automáticamente estantes de los datos actuales
+    actualizarUbicacionesDesdeProductos(result.data)
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: e.message, life: 3000 })
   } finally {
@@ -69,6 +85,12 @@ const handleFilterCategoria = (id: string | null) => {
   loadProductos()
 }
 
+const handleFilterUbicacion = (val: string | null) => {
+  selectedUbicacion.value = val
+  currentPage.value = 0
+  loadProductos()
+}
+
 const handleFilterActivos = (value: boolean) => {
   soloActivos.value = value
   currentPage.value = 0
@@ -77,6 +99,10 @@ const handleFilterActivos = (value: boolean) => {
 
 const handleEdit = (producto: Producto) => {
   navigateTo(`/inventario/${producto.id}`)
+}
+
+const imprimirReporte = () => {
+  window.print()
 }
 
 const eliminarModal = ref(false)
@@ -120,6 +146,7 @@ onMounted(async () => {
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <h1 class="m-0 text-2xl font-bold text-slate-800">Inventario</h1>
       <div v-if="isAdmin" class="flex gap-2">
+        <Button label="Imprimir Planilla" icon="pi pi-print" severity="info" outlined @click="imprimirReporte" class="shadow-sm" />
         <NuxtLink to="/inventario/categorias">
           <Button label="Categorías" icon="pi pi-tags" severity="secondary" outlined class="shadow-sm" />
         </NuxtLink>
@@ -137,6 +164,8 @@ onMounted(async () => {
       :sort-order="sortOrder"
       :categorias="categorias"
       :selected-categoria-id="selectedCategoriaId"
+      :ubicaciones="ubicaciones"
+      :selected-ubicacion="selectedUbicacion"
       :solo-activos="soloActivos"
       @page="handlePage"
       @search="handleSearch"
@@ -144,6 +173,7 @@ onMounted(async () => {
       @edit="handleEdit"
       @delete="handleDelete"
       @filter-categoria="handleFilterCategoria"
+      @filter-ubicacion="handleFilterUbicacion"
       @filter-activos="handleFilterActivos"
     />
 
@@ -191,5 +221,15 @@ onMounted(async () => {
     </Dialog>
 
     <Toast />
+
+    <!-- Reporte Imprimible (Oculto en pantalla) -->
+    <InventarioChecklistReport 
+      :productos="productos" 
+      :filtros="{
+        search: currentSearch,
+        categoria: categorias.find(c => c.id === selectedCategoriaId)?.nombre,
+        ubicacion: selectedUbicacion
+      }"
+    />
   </div>
 </template>

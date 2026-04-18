@@ -29,7 +29,8 @@ const form = ref({
   stock: props.producto?.stock ?? 0,
   precio_venta: props.producto?.precio_venta ?? 0,
   categoria_id: props.producto?.categoria_id ?? null as string | null,
-  activo: props.producto?.activo ?? true
+  activo: props.producto?.activo ?? true,
+  ubicacion: props.producto?.ubicacion ?? ''
 })
 
 // Sincronizar formulario si el producto cambia (carga inicial)
@@ -41,7 +42,8 @@ watch(() => props.producto, (p) => {
       stock: p.stock,
       precio_venta: p.precio_venta,
       categoria_id: p.categoria_id,
-      activo: p.activo
+      activo: p.activo,
+      ubicacion: p.ubicacion ?? ''
     }
   }
 }, { immediate: true })
@@ -131,7 +133,8 @@ const handleSubmit = () => {
       stock: form.value.stock as number,
       precio_venta: form.value.precio_venta as number,
       categoria_id: form.value.categoria_id || null,
-      activo: form.value.activo
+      activo: form.value.activo,
+      ubicacion: form.value.ubicacion.trim() || null
     }
   })
 }
@@ -193,6 +196,19 @@ const handleSubmit = () => {
         :disabled="!form.activo"
       />
       <small v-if="errors.codigo_parte" class="text-red-600">{{ errors.codigo_parte }}</small>
+    </div>
+
+    <!-- Ubicación -->
+    <div class="flex flex-col gap-1.5">
+      <label for="ubicacion" class="text-sm font-medium text-slate-700">
+        Ubicación en anaquel
+      </label>
+      <InputText
+        id="ubicacion"
+        v-model="form.ubicacion"
+        placeholder="Ej: Estante A, Pasillo 2..."
+        :disabled="!form.activo"
+      />
     </div>
 
     <!-- Categoría -->
