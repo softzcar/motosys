@@ -1,13 +1,67 @@
-export default defineNuxtRouteMiddleware((to) => {
+import { useOfflineDb } from '~/composables/useOfflineDb'
+import { useNetworkStore } from '~/stores/network'
+
+export default defineNuxtRouteMiddleware(async (to) => {
   const user = useSupabaseUser()
-  const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password']
+  const networkStore = useNetworkStore()
+  const { getLocalPerfil } = useOfflineDb()
+  
+  const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/forbidden']
   const isPublic = publicRoutes.includes(to.path)
 
+  // 1. Verificación Offline (Misión Crítica)
+  if (!networkStore.isOnline) {
+    const localPerfil = await getLocalPerfil()
+    
+    // Si no hay perfil local y no es una ruta pública, al login
+    if (!localPerfil && !isPublic) {
+      return navigateTo('/login')
+    }
+    
+    // Si hay perfil local y estamos en login, pal POS
+    if (localPerfil && isPublic && to.path !== '/forbidden') {
+      return navigateTo('/pos')
+    }
+
+    // RBAC Offline para Vendedores
+    if (localPerfil && localPerfil.rol === 'vendedor') {
+       const allowedVendorRoutes = ['/pos', '/reportes/ventas', '/forbidden']
+       const isAllowed = allowedVendorRoutes.some(route => to.path.startsWith(route))
+       if (!isAllowed) return navigateTo('/forbidden')
+    }
+
+    return // Permitir navegación offline si pasó las reglas anteriores
+  }
+
+  // 2. Verificación Online (Comportamiento estándar Supabase)
   if (!user.value && !isPublic) {
+    // BRECHA DE SEGURIDAD: Si estamos online pero Supabase aún no carga el user,
+    // verificamos si hay un perfil local para evitar la expulsión inmediata.
+    const localPerfil = await getLocalPerfil()
+    if (localPerfil) {
+      console.log('[Middleware] Usuario no detectado online, pero se permite acceso por perfil local persistente.')
+      return
+    }
+    
     return navigateTo('/login')
   }
 
-  if (user.value && isPublic) {
+  if (user.value && isPublic && to.path !== '/forbidden') {
     return navigateTo('/')
+  }
+
+  // Protección de rutas por rol (RBAC Online)
+  if (user.value) {
+    const { fetchPerfil, perfil } = usePerfil()
+    await fetchPerfil()
+
+    if (perfil.value && perfil.value.rol === 'vendedor') {
+      const allowedVendorRoutes = ['/pos', '/reportes/ventas', '/forbidden']
+      const isAllowed = allowedVendorRoutes.some(route => to.path.startsWith(route))
+      
+      if (!isAllowed) {
+        return navigateTo('/forbidden')
+      }
+    }
   }
 })

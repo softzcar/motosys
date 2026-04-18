@@ -2,6 +2,9 @@
 const { fetchPerfil, perfil } = usePerfil()
 const user = useSupabaseUser()
 const { syncBcvRate } = useTasas()
+const { isOnline } = useOfflineDb()
+const { syncPendingSales, syncMasterData } = useSync()
+const networkStore = useNetworkStore()
 
 const sidebarVisible = ref(false)
 
@@ -9,8 +12,43 @@ watch(() => user.value?.id || (user.value as any)?.sub, async (uid) => {
   if (uid && !perfil.value) await fetchPerfil()
 }, { immediate: true })
 
-onMounted(() => {
-  // Auto-sincronizar la tasa oficial del banco central de forma silenciosa al cargar la web
+// MOTOR DE SINCRONIZACIÓN AUTOMÁTICO
+watch(() => networkStore.isOnline, (online) => {
+  if (online) {
+    console.log('🌐 Conexión recuperada. Sincronizando...')
+    // Usamos un pequeño delay para que Supabase esté 100% listo
+    setTimeout(() => {
+      syncMasterData()
+      syncPendingSales()
+    }, 1000)
+  }
+})
+
+onMounted(async () => {
+  // Iniciar vigilancia única de red
+  networkStore.startHeartbeat()
+  
+  // Recuperación de perfil offline si es necesario
+  if (!networkStore.isOnline) {
+    const { getLocalPerfil } = useOfflineDb()
+    const local = await getLocalPerfil()
+    if (local && !perfil.value) {
+      console.log('👤 Perfil restaurado desde caché local (Inicio Offline)')
+      perfil.value = local
+    }
+  }
+
+  // Sincronización inicial si hay conexión
+  if (networkStore.isOnline) {
+    syncMasterData()
+    syncPendingSales()
+
+    // CALENTAMIENTO DE CACHÉ
+    if (import.meta.client) {
+      import('~/pages/pos/index.vue').catch(() => {})
+    }
+  }
+  
   syncBcvRate()
 })
 </script>
@@ -45,5 +83,9 @@ onMounted(() => {
         <slot />
       </main>
     </div>
+
+    <!-- Componentes Globales de PrimeVue -->
+    <ConfirmDialog />
+    <Toast />
   </div>
 </template>

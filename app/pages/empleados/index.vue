@@ -139,7 +139,5 @@ onMounted(load)
       @toggle-estado="handleToggleEstado"
     />
 
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>

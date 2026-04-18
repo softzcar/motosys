@@ -106,6 +106,14 @@ const searchAuditoria = ref('')
 const auditoriaDetailModal = ref(false)
 const selectedAuditoria = ref<any>(null)
 
+// Estado de Clientes (Reporte por Cliente)
+const ventasCliente = ref<any[]>([])
+const loadingVentasCliente = ref(false)
+const totalVentasClienteRecords = ref(0)
+const searchVentasCliente = ref('')
+const sortFieldVentasCliente = ref('fecha')
+const sortOrderVentasCliente = ref(-1)
+
 // --- MÉTODOS DE CARGA ---
 
 const loadAll = () => {
@@ -118,6 +126,30 @@ const loadAll = () => {
   loadCierres()
   loadAuditoria()
   loadCategorias()
+  loadVentasPorCliente()
+}
+
+const loadVentasPorCliente = async (event?: any) => {
+  // En este reporte no aplicamos el filtro de fecha global por defecto si hay una búsqueda,
+  // para permitir ver todo el historial del cliente.
+  loadingVentasCliente.value = true
+  const rows = event?.rows ?? 10
+  const page = event?.page ?? 0
+  
+  try {
+    const { data, total } = await fetchVentas({
+      page,
+      rows,
+      sortField: sortFieldVentasCliente.value,
+      sortOrder: sortOrderVentasCliente.value,
+      searchCliente: searchVentasCliente.value,
+      incluirAnuladas: true // En el reporte de clientes solemos querer ver todo
+    })
+    ventasCliente.value = data
+    totalVentasClienteRecords.value = total
+  } finally {
+    loadingVentasCliente.value = false
+  }
 }
 
 const loadVentas = async () => {
@@ -395,6 +427,7 @@ const debouncedSearchVentas = useDebounceFn(loadVentas, 500)
 const debouncedSearchInventario = useDebounceFn(loadInventario, 500)
 const debouncedSearchCompras = useDebounceFn(loadCompras, 500)
 const debouncedSearchAuditoria = useDebounceFn(loadAuditoria, 500)
+const debouncedSearchVentasCliente = useDebounceFn(loadVentasPorCliente, 500)
 
 const formatCurrency = (value: number) => {
   if (value === undefined || value === null) return '$0.00'
@@ -448,6 +481,9 @@ const formatDateTime = (dateString: string) => {
         </Tab>
         <Tab value="compras" class="flex items-center gap-2">
           <ShoppingCart :size="16" /> Proveedores y Compras
+        </Tab>
+        <Tab value="clientes" class="flex items-center gap-2">
+          <Users :size="16" /> Clientes
         </Tab>
         <Tab value="auditoria" class="flex items-center gap-2">
           <History :size="16" /> Auditoría
@@ -750,7 +786,73 @@ const formatDateTime = (dateString: string) => {
            </div>
         </TabPanel>
 
-        <!-- 5. AUDITORÍA (INCIDENCIAS) -->
+        <!-- 5. CLIENTES Y SUS FACTURAS -->
+        <TabPanel value="clientes">
+           <div class="space-y-6">
+              <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                       <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Facturación por Cliente</h3>
+                    </div>
+                    <div class="flex items-center gap-3">
+                       <IconField class="w-80">
+                          <InputIcon class="pi pi-search" />
+                          <InputText v-model="searchVentasCliente" placeholder="Buscar por Nombre, Cédula o Teléfono..." class="w-full" @input="debouncedSearchVentasCliente" />
+                       </IconField>
+                    </div>
+                 </div>
+
+                 <DataTable 
+                    :value="ventasCliente" lazy paginator :rows="10" :totalRecords="totalVentasClienteRecords" :loading="loadingVentasCliente"
+                    @page="loadVentasPorCliente"
+                    @sort="e => { sortFieldVentasCliente = e.sortField; sortOrderVentasCliente = e.sortOrder; loadVentasPorCliente() }"
+                    :sortField="sortFieldVentasCliente" :sortOrder="sortOrderVentasCliente"
+                    stripedRows class="p-datatable-sm"
+                 >
+                    <Column field="numero" header="N° Factura" sortable>
+                        <template #body="slotProps">
+                          <span class="font-bold text-primary">#{{ slotProps.data.numero }}</span>
+                        </template>
+                    </Column>
+                    <Column field="fecha" header="Fecha" sortable>
+                        <template #body="slotProps">
+                          {{ formatDateTime(slotProps.data.fecha) }}
+                        </template>
+                    </Column>
+                    <Column field="clientes.nombre" sortField="clientes(nombre)" header="Nombre del Cliente" sortable>
+                        <template #body="slotProps">
+                          <div class="flex flex-col">
+                             <span class="font-bold text-slate-800">{{ slotProps.data.clientes?.nombre ?? '-' }}</span>
+                             <span class="text-[10px] text-slate-400 font-medium">{{ slotProps.data.clientes?.cedula }}</span>
+                          </div>
+                        </template>
+                    </Column>
+                    <Column field="total" header="Monto" sortable>
+                        <template #body="slotProps">
+                          <span class="font-black text-slate-800" :class="{'line-through text-slate-400': slotProps.data.anulada}">
+                             {{ formatCurrency(slotProps.data.total) }}
+                          </span>
+                        </template>
+                    </Column>
+                    <Column field="anulada" header="Estado" sortable>
+                      <template #body="slotProps">
+                        <Tag v-if="slotProps.data.anulada" severity="danger" value="ANULADA" />
+                        <Tag v-else severity="success" value="Vigente" />
+                      </template>
+                    </Column>
+                    <Column :exportable="false" header="Acciones">
+                        <template #body="slotProps">
+                          <Button severity="secondary" text rounded @click="openDetails(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2" v-tooltip.top="'Ver detalle'">
+                            <Eye class="w-5 h-5" />
+                          </Button>
+                        </template>
+                     </Column>
+                 </DataTable>
+              </div>
+           </div>
+        </TabPanel>
+
+        <!-- 6. AUDITORÍA (INCIDENCIAS) -->
         <TabPanel value="auditoria">
            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
@@ -875,22 +977,6 @@ const formatDateTime = (dateString: string) => {
            <Button label="Anular venta" severity="danger" @click="confirmarAnularVenta" :disabled="motivoAnulacionVenta.trim().length < 10" />
         </template>
      </Dialog>
-
-     <Toast position="bottom-right" group="pos-correccion">
-        <template #message="{ message }">
-           <div class="flex flex-col gap-2 w-full">
-              <div class="flex items-center gap-2">
-                 <RotateCcw :size="18" class="text-blue-600" />
-                 <span class="font-bold text-slate-800">{{ message.summary }}</span>
-              </div>
-              <p class="text-xs text-slate-600">{{ message.detail }}</p>
-              <div class="flex gap-2">
-                 <Button label="Cerrar" size="small" text severity="secondary" @click="closeCallback" />
-                 <Button label="Abrir POS" size="small" severity="info" @click="irACorreccionVenta((message as any).data.ventaId); closeCallback()" />
-              </div>
-           </div>
-        </template>
-     </Toast>
 
      <!-- REPORTES IMPRIMIBLES -->
      <div class="hidden print:block">

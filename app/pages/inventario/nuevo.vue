@@ -29,6 +29,5 @@ const handleSubmit = async (payload: { values: Partial<Producto> }) => {
       <InventarioProductoForm :loading="saving" @submit="handleSubmit" @cancel="navigateTo('/inventario')" />
     </div>
 
-    <Toast />
   </div>
 </template>

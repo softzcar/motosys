@@ -15,6 +15,7 @@
     "@primevue/themes": "^4.5.4",
     "@tailwindcss/vite": "^4.2.2",
     "@vueuse/core": "^14.2.1",
+    "dexie": "^4.4.2",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "^4.4.2",
     "pinia": "^3.0.4",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@primevue/nuxt-module": "^4.5.4",
+    "@tauri-apps/cli": "^2.0.0-rc.18",
     "@vite-pwa/nuxt": "^1.1.1"
   }
 }

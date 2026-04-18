@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { Package, ShoppingCart, BarChart3, Settings, Users, LayoutDashboard, UserSquare, Truck, FileText, Wallet, X } from 'lucide-vue-next'
+import { useNetworkStore } from '~/stores/network'
 
 const { isAdmin } = usePerfil()
 const route = useRoute()
+const router = useRouter()
+const networkStore = useNetworkStore()
+const toast = useToast()
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -26,6 +30,28 @@ const menuItems = computed(() => {
     { label: 'Configuración', icon: Settings, to: '/configuracion' }
   ]
 })
+
+const handleNavigation = (e: Event, path: string) => {
+  // Siempre permitimos el POS incluso offline
+  if (path === '/pos') {
+    emit('close')
+    return
+  }
+
+  // Si está offline y no es el POS, bloqueamos
+  if (!networkStore.isOnline) {
+    e.preventDefault()
+    toast.add({
+      severity: 'warn',
+      summary: 'Acceso No Disponible',
+      detail: 'Esta página requiere conexión a internet.',
+      life: 3000
+    })
+    return
+  }
+
+  emit('close')
+}
 
 const isActive = (path: string) => {
   if (path === '/') return route.path === '/'
@@ -57,7 +83,7 @@ const isActive = (path: string) => {
         :class="isActive(item.to)
           ? 'bg-blue-600 text-white'
           : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-        @click="emit('close')"
+        @click="handleNavigation($event, item.to)"
       >
         <component :is="item.icon" :size="20" />
         {{ item.label }}

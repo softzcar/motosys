@@ -7,18 +7,16 @@ export const useVentas = () => {
     items: { producto_id: string; cantidad: number; precio_unitario: number }[],
     pagos: { metodo_pago_id: string; monto_recibido: number; tasa_aplicada: number; monto_usd: number; referencia?: string | null }[],
     clienteId?: string,
-    corrigeVentaId?: string
+    corrigeVentaId?: string,
+    vendedorId?: string
   ) => {
     const payload: any = {
         p_items: items,
         p_pagos: pagos
     }
-    if (clienteId) {
-      payload.p_cliente_id = clienteId
-    }
-    if (corrigeVentaId) {
-      payload.p_corrige_venta_id = corrigeVentaId
-    }
+    if (clienteId) payload.p_cliente_id = clienteId
+    if (corrigeVentaId) payload.p_corrige_venta_id = corrigeVentaId
+    if (vendedorId) payload.p_vendedor_id = vendedorId
 
     const { data, error } = await client.rpc('procesar_venta', payload)
 
@@ -68,7 +66,7 @@ export const useVentas = () => {
     if (!opts?.incluirAnuladas) query = query.eq('anulada', false)
 
     if (opts?.searchCliente) {
-      query = query.ilike('clientes.nombre', `%${opts.searchCliente}%`)
+      query = query.or(`nombre.ilike.%${opts.searchCliente}%,cedula.ilike.%${opts.searchCliente}%,telefono.ilike.%${opts.searchCliente}%`, { foreignTable: 'clientes' })
     }
 
     if (opts?.vendedorId) {

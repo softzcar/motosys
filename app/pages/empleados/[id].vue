@@ -58,7 +58,5 @@ onMounted(load)
         @cancel="navigateTo('/empleados')"
       />
     </div>
-
-    <Toast />
   </div>
 </template>

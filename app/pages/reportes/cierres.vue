@@ -220,8 +220,6 @@ onMounted(load)
         <Button label="Cerrar" text severity="secondary" @click="detailModal = false" />
       </template>
     </Dialog>
-
-    <Toast />
   </div>
   <div v-else class="flex items-center justify-center p-20 text-slate-400">
     <Loader2 class="animate-spin" :size="32" />

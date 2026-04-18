@@ -440,7 +440,5 @@ onMounted(() => {
           <Button label="Guardar" @click="saveMetodo" severity="success" icon="pi pi-check" :loading="savingMetodo" />
        </template>
     </Dialog>
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>

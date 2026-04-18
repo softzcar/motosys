@@ -26,8 +26,9 @@ const emit = defineEmits<{ checkout: [] }>()
       </div>
 
       <Button
-        label="Procesar Venta"
-        class="w-full"
+        label="Procesar Venta (F3)"
+        class="w-full font-bold shadow-md"
+        severity="success"
         :disabled="cart.items.length === 0 || disabled"
         :tabindex="disabled ? -1 : 0"
         @click="emit('checkout')"

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Search, Barcode } from 'lucide-vue-next'
 import { useDebounceFn } from '@vueuse/core'
+import { useOfflineDb, db } from '~/composables/useOfflineDb'
 import type { Producto } from '~/types/database'
 
 const { fetchProductos, findByCodigo } = useProductos()
+const { isOnline } = useOfflineDb()
 const cart = useCartStore()
 const toast = useToast()
 
@@ -18,10 +20,26 @@ const buscar = useDebounceFn(async () => {
     return
   }
   loading.value = true
+  
   try {
-    const { data } = await fetchProductos({ search: search.value, rows: 10, soloActivos: true })
-    resultados.value = data
-  } catch {
+    if (isOnline.value) {
+      const { data } = await fetchProductos({ search: search.value, rows: 10, soloActivos: true })
+      resultados.value = data
+    } else {
+      // Búsqueda Offline en Dexie
+      console.log('🔍 Buscando en DB Local...')
+      const term = search.value.toLowerCase()
+      const localResults = await db.productos
+        .filter(p => 
+          p.nombre.toLowerCase().includes(term) || 
+          p.codigo_parte.toLowerCase().includes(term)
+        )
+        .limit(10)
+        .toArray()
+      resultados.value = localResults
+    }
+  } catch (e) {
+    console.error('Error en búsqueda:', e)
     resultados.value = []
   } finally {
     loading.value = false
@@ -43,10 +61,20 @@ const addToCart = (producto: Producto) => {
 // Barcode scanner
 useBarcodeScanner(async (code) => {
   try {
-    const producto = await findByCodigo(code)
-    addToCart(producto)
-  } catch {
-    toast.add({ severity: 'error', summary: 'No encontrado', detail: `Código: ${code}`, life: 3000 })
+    let producto = null
+    if (isOnline.value) {
+      producto = await findByCodigo(code)
+    } else {
+      // Búsqueda Offline en Dexie
+      producto = await db.productos.where('codigo_parte').equals(code).first()
+    }
+    
+    if (producto) addToCart(producto)
+    else toast.add({ severity: 'warn', summary: 'No encontrado', detail: `Código: ${code}`, life: 3000 })
+    
+  } catch (e) {
+    console.error('Error escaneando:', e)
+    toast.add({ severity: 'error', summary: 'Error de escaneo', life: 3000 })
   }
 })
 

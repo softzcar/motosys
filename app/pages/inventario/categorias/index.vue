@@ -221,7 +221,5 @@ onMounted(loadCategorias)
       </template>
     </Dialog>
 
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>

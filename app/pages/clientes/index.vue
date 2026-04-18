@@ -251,8 +251,5 @@ onMounted(loadClientes)
         </div>
       </template>
     </Dialog>
-
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>

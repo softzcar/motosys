@@ -220,7 +220,6 @@ onMounted(async () => {
       </template>
     </Dialog>
 
-    <Toast />
 
     <!-- Reporte Imprimible (Oculto en pantalla) -->
     <InventarioChecklistReport 

@@ -3,6 +3,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  ssr: false, // Convertir a modo aplicación pura para máxima compatibilidad offline/APK
+
   future: {
     compatibilityVersion: 4,
   },
@@ -106,16 +108,48 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: '/',
+      globPatterns: [
+        '**/*.{js,css,html,png,svg,ico,woff2}', 
+        '_nuxt/**/*',
+        'android-icon-*.png',
+        'apple-icon-*.png',
+        'favicon-*.png'
+      ],
+      cleanupOutdatedCaches: true,
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
           handler: 'NetworkFirst',
-          options: { cacheName: 'api-cache', expiration: { maxEntries: 100, maxAgeSeconds: 300 } }
+          options: { 
+            cacheName: 'api-cache', 
+            expiration: { maxEntries: 100, maxAgeSeconds: 3600 },
+            networkTimeoutSeconds: 5 // Si el internet está lento, salta a caché rápido
+          }
         },
         {
-          urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/,
-          handler: 'StaleWhileRevalidate',
-          options: { cacheName: 'image-cache', expiration: { maxEntries: 200, maxAgeSeconds: 86400 } }
+          urlPattern: ({ request }) => request.destination === 'document',
+          handler: 'NetworkFirst',
+          options: { cacheName: 'pages-cache' }
+        },
+        {
+          urlPattern: ({ url }) => url.pathname.includes('/_nuxt/'),
+          handler: 'CacheFirst',
+          options: { 
+            cacheName: 'nuxt-internal-cache',
+            matchOptions: {
+              ignoreSearch: true,
+              ignoreVary: true
+            },
+            expiration: {
+              maxEntries: 500,
+              maxAgeSeconds: 60 * 60 * 24 * 30 // 30 días
+            }
+          }
+        },
+        {
+          urlPattern: ({ request }) => request.destination === 'image' || request.destination === 'font',
+          handler: 'CacheFirst',
+          options: { cacheName: 'assets-cache' }
         }
       ]
     },

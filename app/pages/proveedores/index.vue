@@ -209,7 +209,5 @@ const onFilter = () => {
         <Button label="Sí" icon="pi pi-check" severity="danger" @click="deleteProveedor" />
       </template>
     </Dialog>
-
-    <Toast />
   </div>
 </template>

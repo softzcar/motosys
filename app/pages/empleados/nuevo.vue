@@ -34,6 +34,5 @@ const handleSubmit = async (data: { nombre: string; email?: string; password?: s
     <div class="bg-white rounded-xl p-6 shadow-sm">
       <EmpleadosEmpleadoForm :loading="saving" @submit="handleSubmit" @cancel="navigateTo('/empleados')" />
     </div>
-    <Toast />
   </div>
 </template>

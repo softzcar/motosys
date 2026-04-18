@@ -329,27 +329,5 @@ const formatDateTime = (dateString: string) => {
         </Button>
       </template>
     </Dialog>
-
-    <!-- Toast con CTA "Crear corrección" -->
-    <Toast position="bottom-right" group="crear-correccion">
-      <template #message="{ message }">
-        <div class="flex flex-col gap-2 w-full">
-          <div class="flex items-center gap-2">
-            <FilePlus :size="18" class="text-blue-600" />
-            <span class="font-bold text-slate-800">{{ message.summary }}</span>
-          </div>
-          <p class="text-xs text-slate-600">{{ message.detail }}</p>
-          <Button
-            size="small"
-            severity="primary"
-            class="mt-1 w-full flex items-center justify-center gap-2"
-            @click="irACorreccion((message as any).compraId)"
-          >
-            <FilePlus :size="14" />
-            Crear corrección ahora
-          </Button>
-        </div>
-      </template>
-    </Toast>
   </div>
 </template>

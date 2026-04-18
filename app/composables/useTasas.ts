@@ -13,6 +13,9 @@ export const useTasas = () => {
 
   // Sincroniza la tasa oficial del BCV llamando a la API
   const syncBcvRate = async () => {
+    // Si estamos offline, no intentamos sincronizar para evitar errores
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    
     try {
       const response = await fetch('https://ve.dolarapi.com/v1/dolares')
       const data = await response.json()
