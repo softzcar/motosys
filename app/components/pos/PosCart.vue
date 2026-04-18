@@ -3,6 +3,10 @@ import { ShoppingCart } from 'lucide-vue-next'
 
 const cart = useCartStore()
 
+defineProps<{
+  disabled?: boolean
+}>()
+
 const emit = defineEmits<{ checkout: [] }>()
 </script>
 
@@ -24,7 +28,8 @@ const emit = defineEmits<{ checkout: [] }>()
       <Button
         label="Procesar Venta"
         class="w-full"
-        :disabled="cart.items.length === 0"
+        :disabled="cart.items.length === 0 || disabled"
+        :tabindex="disabled ? -1 : 0"
         @click="emit('checkout')"
       />
     </div>
@@ -39,6 +44,7 @@ const emit = defineEmits<{ checkout: [] }>()
         v-for="item in cart.items"
         :key="item.producto.id"
         :item="item"
+        :disabled="disabled"
         @update-quantity="cart.updateQuantity"
         @remove="cart.removeItem"
       />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { User, Search, ShoppingCart, CreditCard, Banknote, Plus, Trash2, CheckCircle2, RotateCcw, X } from 'lucide-vue-next'
+import { User, Search, ShoppingCart, CreditCard, Banknote, Plus, Trash2, CheckCircle2, RotateCcw, X, Loader2 } from 'lucide-vue-next'
 import { useTasas } from '~/composables/useTasas'
 import { useMetodosPago } from '~/composables/useMetodosPago'
 
@@ -21,32 +21,30 @@ const activeTab = ref<'search' | 'cart'>('search')
 const ventaOrigen = ref<any>(null)
 const corrigeVentaId = ref<string | null>(null)
 const cargandoOrigen = ref(false)
+const openingCheckout = ref(false)
 
-const cargarPrefillDesde = async (ventaId: string) => {
+const cargarPrefillDesde = async (id: string) => {
   cargandoOrigen.value = true
   try {
-    const venta: any = await fetchVentaById(ventaId)
-
-    if (!venta.anulada) {
-      toast.add({ severity: 'error', summary: 'No se puede prellenar', detail: 'La venta de origen no está anulada', life: 4000 })
+    const data = await fetchVentaById(id)
+    if (!data.anulada) {
+      toast.add({ severity: 'warn', summary: 'No se puede corregir', detail: 'La venta origen no está anulada', life: 4000 })
       return
     }
-
+    
+    ventaOrigen.value = data
+    corrigeVentaId.value = id
+    
+    // Llenar el carrito
     cart.clear()
-    for (const det of (venta.detalle_ventas ?? [])) {
-      if (!det.productos) continue
-      cart.seedItem(det.productos, det.cantidad, Number(det.precio_unitario))
-    }
-
-    ventaOrigen.value = venta
-    corrigeVentaId.value = venta.id
-
-    toast.add({
-      severity: 'info',
-      summary: 'Carrito precargado',
-      detail: `Corrigiendo venta #${venta.id.slice(0, 8).toUpperCase()}. Ajusta los productos antes de cobrar.`,
-      life: 5000
+    data.detalle_ventas?.forEach((d: any) => {
+      cart.addItem({
+        ...d.productos,
+        precio_venta: Number(d.precio_unitario)
+      }, d.cantidad)
     })
+
+    toast.add({ severity: 'info', summary: 'Datos prellenados', detail: `Corrigiendo venta anulada #${data.numero}`, life: 5000 })
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'No se pudo cargar la venta', detail: e.message ?? 'Error desconocido', life: 4000 })
   } finally {
@@ -81,6 +79,11 @@ const clientForm = ref({
   nombre: '',
   telefono: ''
 })
+
+// Referencias para control de foco
+const cedulaInput = ref<HTMLInputElement | null>(null)
+const nombreInput = ref<HTMLInputElement | null>(null)
+const continuarPagoBtn = ref<any>(null)
 
 const isCheckoutDialogVisible = ref(false)
 const selectedTasaCodigo = ref('BCV')
@@ -142,14 +145,48 @@ const canFinish = computed(() => {
     return faltanteUsd.value <= 0.01 && cart.itemCount > 0
 })
 
-const handleCheckout = async () => {
-  // Sincronizar tasa BCV antes de entrar al flujo de pago para garantizar que la tasa esté fresca
-  await syncBcvRate()
+watch(isClientDialogVisible, (val) => {
+  if (val) {
+    // Ráfaga de enfoque: intentamos 5 veces en medio segundo
+    // Esto asegura capturar el foco sin importar las animaciones o renderizado
+    for (let i = 1; i <= 5; i++) {
+      setTimeout(() => {
+        const el = document.getElementById('cedulaInput')
+        if (el) {
+          el.focus()
+          console.log(`Intento de foco ${i} ejecutado`)
+        }
+      }, i * 100)
+    }
+  }
+})
 
-  // En lugar de ir directo a confirm.require, abrimos el dialog del cliente
+const handleCheckout = async () => {
+  if (openingCheckout.value) return
+  openingCheckout.value = true
+  
+  try {
+    // Abrir el diálogo primero para feedback instantáneo
+    clientForm.value = { cedula: '', nombre: '', telefono: '' }
+    clientFound.value = null
+    isClientDialogVisible.value = true
+
+    // Sincronizar tasa en segundo plano mientras el usuario se prepara
+    await syncBcvRate()
+  } catch (e) {
+    console.error('Error sincronizando tasa:', e)
+  } finally {
+    openingCheckout.value = false
+  }
+}
+
+const resetCliente = () => {
   clientForm.value = { cedula: '', nombre: '', telefono: '' }
   clientFound.value = null
-  isClientDialogVisible.value = true
+  searchingClient.value = false
+  setTimeout(() => {
+    cedulaInput.value?.focus()
+  }, 100)
 }
 
 const buscarCliente = async () => {
@@ -164,11 +201,22 @@ const buscarCliente = async () => {
       clientForm.value.nombre = existing.nombre
       clientForm.value.telefono = existing.telefono || ''
       toast.add({ severity: 'info', summary: 'Cliente encontrado', life: 2000 })
+      
+      // Forzar foco al botón de pago con delay de seguridad
+      setTimeout(() => {
+        const btn = continuarPagoBtn.value?.$el || continuarPagoBtn.value
+        btn?.focus?.()
+      }, 150)
     } else {
-      clientFound.value = false // false means explicitly searched and not found
+      clientFound.value = false 
       clientForm.value.nombre = ''
       clientForm.value.telefono = ''
-      toast.add({ severity: 'warn', summary: 'Cliente no registrado', detail: 'Por favor complete los datos para registrarlo', life: 3000 })
+      toast.add({ severity: 'info', summary: 'Cliente nuevo', detail: 'Complete los datos para registrarlo', life: 3000 })
+      
+      // Forzar foco al input de nombre con delay de seguridad
+      setTimeout(() => {
+        nombreInput.value?.focus()
+      }, 150)
     }
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error buscando cliente', detail: e.message, life: 3000 })
@@ -300,8 +348,23 @@ const finalizarVenta = async () => {
         const numFactura = nuevaVenta?.numero ?? '---'
 
         lastVentaId.value = ventaId
+        
+        // --- LIMPIEZA PROFUNDA DEL POS ---
         cart.clear()
         isCheckoutDialogVisible.value = false
+        
+        // Reset cliente
+        clientForm.value = { cedula: '', nombre: '', telefono: '' }
+        clientFound.value = null
+        
+        // Reset checkout y pagos
+        pagos.value = []
+        selectedMetodoId.value = null
+        montoAbono.value = 0
+        referenciaAbono.value = ''
+        
+        // Reset interfaz móvil
+        activeTab.value = 'search'
 
         const fueCorreccion = !!corrigeVentaId.value
         ventaOrigen.value = null
@@ -334,32 +397,22 @@ const formatCurrency = (val: number) => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Punto de Venta</h1>
-
-    <!-- Banner: corrigiendo una venta anulada -->
-    <div v-if="ventaOrigen" class="mb-4 bg-amber-50 border-l-4 border-amber-400 rounded-lg p-3 flex items-start gap-3">
-       <RotateCcw class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-       <div class="flex-1">
-          <p class="text-amber-900 font-bold text-sm leading-tight">Corrección de venta anulada</p>
-          <p class="text-amber-800 text-xs mt-0.5">
-             Carrito precargado desde la venta <b>#{{ ventaOrigen.id.slice(0, 8).toUpperCase() }}</b>.
-             Ajusta cantidades, precios o productos antes de cobrar; la nueva factura quedará enlazada con la original.
-          </p>
-       </div>
-       <button
-          type="button"
-          @click="cancelarCorreccion"
-          class="text-amber-700 hover:text-amber-900 hover:bg-amber-100 rounded p-1 transition"
-          title="Cancelar corrección"
-       >
-          <X class="w-4 h-4" />
-       </button>
+  <div class="p-4 md:p-6 bg-slate-50 min-h-screen">
+    <!-- Banner de corrección -->
+    <div v-if="ventaOrigen" class="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-3">
+            <RotateCcw class="text-amber-600 animate-spin-slow" :size="20" />
+            <div>
+                <p class="text-xs font-bold text-amber-800 uppercase tracking-wider">Corrigiendo venta anulada #{{ ventaOrigen.numero }}</p>
+                <p class="text-[10px] text-amber-600">Al procesar esta factura, se marcará como reemplazo de la anterior.</p>
+            </div>
+        </div>
+        <Button severity="secondary" text size="small" label="Cancelar corrección" @click="cancelarCorreccion" />
     </div>
 
-    <div v-if="cargandoOrigen" class="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 flex items-center gap-2">
-       <span class="w-3 h-3 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></span>
-       Cargando datos de la venta a corregir...
+    <div v-if="cargandoOrigen" class="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center gap-2">
+        <Loader2 class="animate-spin text-blue-500" :size="24" />
+        <span class="text-xs text-slate-500 font-medium">Recuperando datos de venta...</span>
     </div>
 
     <div class="pos-grid flex-1 overflow-hidden relative">
@@ -390,7 +443,7 @@ const formatCurrency = (val: number) => {
         <PosProductSearch />
       </div>
       <div :class="{'hidden lg:block': activeTab !== 'cart'}" class="h-full overflow-hidden">
-        <PosCart @checkout="handleCheckout" />
+        <PosCart :disabled="isClientDialogVisible" @checkout="handleCheckout" />
       </div>
     </div>
 
@@ -400,6 +453,8 @@ const formatCurrency = (val: number) => {
       header="Información del Cliente" 
       modal 
       class="w-full max-w-md"
+      :focusOnShow="false"
+      :blockScroll="true"
     >
       <div class="space-y-4 pt-4">
         <div class="bg-blue-50 p-3 rounded-lg flex gap-3 text-sm text-blue-800 mb-4">
@@ -411,17 +466,20 @@ const formatCurrency = (val: number) => {
           <label class="block text-sm font-medium text-slate-700 mb-1">Cédula</label>
           <div class="relative">
             <input 
+              id="cedulaInput"
               v-model="clientForm.cedula" 
               @keyup.enter="buscarCliente"
-              @blur="buscarCliente"
               type="text" 
               placeholder="Ej. 12345678"
-              class="w-full pl-3 pr-10 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full pl-3 pr-10 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-opacity"
+              :disabled="clientFound !== null || searchingClient"
+              :class="clientFound !== null ? 'opacity-60 bg-slate-50' : ''"
             />
             <button 
               @click="buscarCliente"
+              type="button"
               class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 transition"
-              :disabled="searchingClient"
+              :disabled="searchingClient || clientFound !== null"
             >
               <span v-if="searchingClient" class="w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin inline-block"></span>
               <Search v-else class="w-4 h-4" />
@@ -432,11 +490,13 @@ const formatCurrency = (val: number) => {
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nombre y Apellido</label>
           <input 
+            ref="nombreInput"
             v-model="clientForm.nombre" 
             type="text" 
             class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             :class="clientFound ? 'bg-slate-50 text-slate-600' : ''"
             :readonly="!!clientFound"
+            :disabled="clientFound !== null && clientFound !== false"
           />
         </div>
 
@@ -448,18 +508,28 @@ const formatCurrency = (val: number) => {
             class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             :class="clientFound ? 'bg-slate-50 text-slate-600' : ''"
             :readonly="!!clientFound"
+            :disabled="clientFound !== null && clientFound !== false"
           />
         </div>
       </div>
       
       <template #footer>
-        <div class="flex justify-end gap-2 mt-4">
-          <button @click="isClientDialogVisible = false" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition">
+        <div class="flex justify-end gap-2 mt-4 w-full">
+          <button 
+            @click="resetCliente" 
+            type="button"
+            class="mr-auto px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center gap-2 font-bold text-xs uppercase"
+          >
+            <RotateCcw :size="14" /> Limpiar / Nuevo
+          </button>
+          
+          <button @click="isClientDialogVisible = false" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition text-sm">
             Volver
           </button>
           <button 
+            ref="continuarPagoBtn"
             @click="proceedToPayment" 
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-bold shadow-md"
           >
             Continuar a Pago
           </button>
@@ -505,11 +575,24 @@ const formatCurrency = (val: number) => {
                             v-if="requiereReferencia"
                             v-model="referenciaAbono"
                             placeholder="Número de referencia / transacción"
-                            class="w-full"
+                            class="w-full border-blue-500 ring-1 ring-blue-500/20 bg-blue-50/10"
                         />
                         <div class="flex gap-2">
-                            <InputNumber v-model="montoAbono" mode="decimal" :minFractionDigits="2" placeholder="Monto" class="flex-1" />
-                            <Button @click="agregarPago" severity="success" class="aspect-square !p-0 flex items-center justify-center">
+                            <InputNumber 
+                                :model-value="montoAbono" 
+                                @input="(e) => montoAbono = e.value ?? 0"
+                                mode="decimal" 
+                                :minFractionDigits="2" 
+                                placeholder="Monto" 
+                                class="flex-1" 
+                                :disabled="!selectedMetodoId"
+                            />
+                            <Button 
+                                @click="agregarPago" 
+                                severity="success" 
+                                class="aspect-square !p-0 flex items-center justify-center"
+                                :disabled="!selectedMetodoId"
+                            >
                                 <Plus class="w-5 h-5" />
                             </Button>
                         </div>

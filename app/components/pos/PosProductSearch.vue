@@ -10,6 +10,7 @@ const toast = useToast()
 const search = ref('')
 const resultados = ref<Producto[]>([])
 const loading = ref(false)
+const searchInput = ref<any>(null)
 
 const buscar = useDebounceFn(async () => {
   if (!search.value || search.value.length < 2) {
@@ -33,6 +34,9 @@ const addToCart = (producto: Producto) => {
     toast.add({ severity: 'warn', summary: 'Stock insuficiente', detail: `"${producto.nombre}" sin stock disponible`, life: 2000 })
   } else {
     toast.add({ severity: 'success', summary: 'Agregado', detail: producto.nombre, life: 1000 })
+    // Limpiar búsqueda y resultados al agregar con éxito
+    search.value = ''
+    resultados.value = []
   }
 }
 
@@ -45,18 +49,34 @@ useBarcodeScanner(async (code) => {
     toast.add({ severity: 'error', summary: 'No encontrado', detail: `Código: ${code}`, life: 3000 })
   }
 })
+
+// Shortcut F2 para buscar
+const handleGlobalKey = (e: KeyboardEvent) => {
+  // Solo si no hay un modal abierto (para evitar conflictos)
+  if (e.key === 'F2') {
+    e.preventDefault()
+    searchInput.value?.$el?.focus?.() || searchInput.value?.focus?.()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', handleGlobalKey))
+onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
 </script>
 
 <template>
   <div class="bg-white rounded-xl shadow-sm flex flex-col h-full">
     <div class="p-4 border-b border-slate-200">
-      <div class="flex items-center gap-2 mb-2">
-        <Barcode :size="18" class="text-green-600" />
-        <span class="text-xs text-green-600 font-medium">Scanner activo</span>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <Barcode :size="18" class="text-green-600" />
+          <span class="text-xs text-green-600 font-medium">Scanner activo</span>
+        </div>
+        <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-tighter">F2: Buscar</span>
       </div>
       <IconField>
         <InputIcon class="pi pi-search" />
         <InputText
+          ref="searchInput"
           v-model="search"
           placeholder="Buscar producto por nombre o código..."
           class="w-full"

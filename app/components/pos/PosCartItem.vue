@@ -2,7 +2,10 @@
 import { Trash2 } from 'lucide-vue-next'
 import type { CartItem } from '~/types/database'
 
-defineProps<{ item: CartItem }>()
+defineProps<{ 
+  item: CartItem,
+  disabled?: boolean
+}>()
 
 const emit = defineEmits<{
   updateQuantity: [productoId: string, cantidad: number]
@@ -11,7 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0">
+  <div class="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0" :class="{'opacity-50 pointer-events-none': disabled}">
     <div class="flex-1 min-w-0">
       <p class="text-sm font-medium text-slate-800 truncate">{{ item.producto.nombre }}</p>
       <p class="text-xs text-slate-500">{{ item.producto.codigo_parte }}</p>
@@ -26,6 +29,8 @@ const emit = defineEmits<{
       :input-style="{ width: '3rem', textAlign: 'center' }"
       decrement-button-class="p-button-sm p-button-secondary"
       increment-button-class="p-button-sm p-button-secondary"
+      :disabled="disabled"
+      :tabindex="disabled ? -1 : 0"
       @update:model-value="emit('updateQuantity', item.producto.id, $event ?? 1)"
     />
 
@@ -38,6 +43,8 @@ const emit = defineEmits<{
       rounded
       severity="danger"
       size="small"
+      :disabled="disabled"
+      :tabindex="disabled ? -1 : 0"
       @click="emit('remove', item.producto.id)"
       aria-label="Quitar"
     >
