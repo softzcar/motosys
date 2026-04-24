@@ -93,9 +93,11 @@ export default defineNuxtConfig({
       short_name: 'motosys',
       description: 'Sistema de Gestión motosys',
       theme_color: '#0f172a',
-      background_color: '#ffffff',
+      background_color: '#0f172a',
       display: 'standalone',
       orientation: 'portrait',
+      start_url: '/',
+      scope: '/',
       icons: [
         { src: 'android-icon-36x36.png', sizes: '36x36', type: 'image/png' },
         { src: 'android-icon-48x48.png', sizes: '48x48', type: 'image/png' },

@@ -53,9 +53,18 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Protección de rutas por rol (RBAC Online)
   if (user.value) {
     const { fetchPerfil, perfil } = usePerfil()
-    await fetchPerfil()
+    try {
+      await fetchPerfil()
+    } catch (e) {
+      console.error('[Middleware] Error al cargar perfil:', e)
+      // Si falla y no tenemos perfil local ni online, podríamos estar en un limbo
+      // Pero no bloqueamos la navegación para evitar pantalla en blanco
+    }
 
     if (perfil.value && perfil.value.rol === 'vendedor') {
+      // Especial: Si el vendedor entra a la raíz, lo mandamos al POS
+      if (to.path === '/') return navigateTo('/pos')
+
       const allowedVendorRoutes = ['/pos', '/reportes/ventas', '/forbidden']
       const isAllowed = allowedVendorRoutes.some(route => to.path.startsWith(route))
       

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { markRaw } from 'vue'
 import { Package, ShoppingCart, BarChart3, Settings, Users, LayoutDashboard, UserSquare, Truck, FileText, Wallet, X } from 'lucide-vue-next'
 import { useNetworkStore } from '~/stores/network'
 
@@ -13,21 +14,21 @@ const emit = defineEmits<{ close: [] }>()
 const menuItems = computed(() => {
   if (!isAdmin.value) {
     return [
-      { label: 'Punto de Venta', icon: ShoppingCart, to: '/pos' }
+      { label: 'Punto de Venta', icon: markRaw(ShoppingCart), to: '/pos' }
     ]
   }
 
   return [
-    { label: 'Inicio', icon: LayoutDashboard, to: '/' },
-    { label: 'Punto de Venta', icon: ShoppingCart, to: '/pos' },
-    { label: 'Caja', icon: Wallet, to: '/caja' },
-    { label: 'Inventario', icon: Package, to: '/inventario' },
-    { label: 'Compras', icon: FileText, to: '/compras' },
-    { label: 'Proveedores', icon: Truck, to: '/proveedores' },
-    { label: 'Clientes', icon: UserSquare, to: '/clientes' },
-    { label: 'Empleados', icon: Users, to: '/empleados' },
-    { label: 'Reportes', icon: BarChart3, to: '/reportes' },
-    { label: 'Configuración', icon: Settings, to: '/configuracion' }
+    { label: 'Punto de Venta', icon: markRaw(ShoppingCart), to: '/pos' },
+    { label: 'Resumen Gerencial', icon: markRaw(LayoutDashboard), to: '/' },
+    { label: 'Caja', icon: markRaw(Wallet), to: '/caja' },
+    { label: 'Inventario', icon: markRaw(Package), to: '/inventario' },
+    { label: 'Compras', icon: markRaw(FileText), to: '/compras' },
+    { label: 'Proveedores', icon: markRaw(Truck), to: '/proveedores' },
+    { label: 'Clientes', icon: markRaw(UserSquare), to: '/clientes' },
+    { label: 'Empleados', icon: markRaw(Users), to: '/empleados' },
+    { label: 'Reportes', icon: markRaw(BarChart3), to: '/reportes' },
+    { label: 'Configuración', icon: markRaw(Settings), to: '/configuracion' }
   ]
 })
 

@@ -18,6 +18,7 @@ watch(() => networkStore.isOnline, (online) => {
     console.log('🌐 Conexión recuperada. Sincronizando...')
     // Usamos un pequeño delay para que Supabase esté 100% listo
     setTimeout(() => {
+      fetchPerfil() // Refrescar perfil para asegurar rol correcto
       syncMasterData()
       syncPendingSales()
     }, 1000)
