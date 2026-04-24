@@ -193,28 +193,28 @@ onMounted(async () => {
 <template>
   <div v-if="isAdmin">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-3 mb-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       <div class="flex items-center gap-3">
-        <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+        <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg shrink-0">
           <Wallet :size="24" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold text-slate-800">Caja</h1>
-          <p class="text-slate-500">Saldos actuales y registro de movimientos manuales.</p>
+          <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Caja</h1>
+          <p class="text-slate-500 text-sm">Saldos actuales y registro de movimientos manuales.</p>
         </div>
       </div>
-      <div class="flex gap-2">
-        <NuxtLink to="/caja/cierre">
-          <Button severity="secondary" outlined class="shadow-sm bg-white flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <NuxtLink to="/caja/cierre" class="flex-1 md:flex-none">
+          <Button severity="secondary" outlined class="w-full shadow-sm bg-white flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider">
             <ClipboardList class="w-4 h-4" />
             Cierre del Día
           </Button>
         </NuxtLink>
-        <Button severity="success" class="flex items-center gap-2" @click="openDialog('ingreso')">
+        <Button severity="success" class="flex-1 md:flex-none flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider" @click="openDialog('ingreso')">
           <ArrowDownCircle class="w-4 h-4" />
           Ingreso
         </Button>
-        <Button severity="danger" class="flex items-center gap-2" @click="openDialog('egreso')">
+        <Button severity="danger" class="flex-1 md:flex-none flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider" @click="openDialog('egreso')">
           <ArrowUpCircle class="w-4 h-4" />
           Egreso
         </Button>
@@ -288,11 +288,11 @@ onMounted(async () => {
 
     <!-- Tabla movimientos manuales -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+      <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Movimientos manuales</span>
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-slate-400 uppercase">Tipo:</span>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2 flex-1 min-w-[140px]">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Tipo:</span>
             <Select
               v-model="filterTipo"
               :options="[
@@ -302,22 +302,22 @@ onMounted(async () => {
               ]"
               optionLabel="label"
               optionValue="value"
-              class="w-36"
+              class="flex-1 md:w-36"
               @change="loadMovimientos()"
             />
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-slate-400 uppercase">Método:</span>
+          <div class="flex items-center gap-2 flex-1 min-w-[180px]">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Método:</span>
             <Select
               v-model="filterMetodo"
               :options="[{ id: null, nombre: 'Todos' }, ...metodos]"
               optionLabel="nombre"
               optionValue="id"
-              class="w-48"
+              class="flex-1 md:w-48"
               @change="loadMovimientos()"
             />
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg ml-2">
+          <div class="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg flex-1 min-w-[160px]">
             <label for="fechaFiltro" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Periodo:</label>
             <DatePicker 
               v-model="fechaFiltro" 
@@ -325,7 +325,7 @@ onMounted(async () => {
               dateFormat="mm/yy" 
               placeholder="Mes" 
               showIcon 
-              class="w-40" 
+              class="flex-1 md:w-32" 
               @date-select="loadMovimientos()" 
             />
           </div>
