@@ -94,20 +94,21 @@ onMounted(loadPreview)
 
 <template>
   <div v-if="isAdmin">
-    <div class="flex items-center justify-between gap-3 mb-6">
+    <!-- Header Responsivo -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       <div class="flex items-center gap-3">
-        <NuxtLink to="/caja" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
+        <NuxtLink to="/caja" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500 shrink-0">
           <ArrowLeft :size="20" />
         </NuxtLink>
-        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
+        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
           <ClipboardList :size="24" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold text-slate-800">Cierre de Caja</h1>
-          <p class="text-slate-500">Confirma el efectivo contado por método contra lo registrado en el sistema.</p>
+          <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Cierre de Caja</h1>
+          <p class="text-slate-500 text-sm">Confirma el efectivo contado contra el sistema.</p>
         </div>
       </div>
-      <Button severity="danger" class="flex items-center gap-2" @click="ejecutar" :loading="saving" :disabled="loading">
+      <Button severity="danger" class="w-full md:w-auto flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest py-3" @click="ejecutar" :loading="saving" :disabled="loading">
         <Lock class="w-4 h-4" />
         Ejecutar Cierre
       </Button>
@@ -118,52 +119,98 @@ onMounted(loadPreview)
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <div class="p-4 border-b border-slate-100 flex items-center gap-2">
           <ClipboardList class="w-4 h-4 text-slate-400" />
           <span class="text-xs font-bold text-slate-600 uppercase">Detalle por Método de Pago</span>
         </div>
-        <table class="w-full text-sm">
-          <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            <tr>
-              <th class="p-3 text-left">Método</th>
-              <th class="p-3 text-right">Sistema</th>
-              <th class="p-3 text-right">Contado</th>
-              <th class="p-3 text-right">Tasa</th>
-              <th class="p-3 text-right">Diferencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="filasCierre.length === 0">
-              <td colspan="5" class="p-10 text-center text-slate-400 italic">Sin operaciones desde el último cierre.</td>
-            </tr>
-            <tr v-for="f in filasCierre" :key="f.metodo_pago_id" class="border-t border-slate-100">
-              <td class="p-3">
-                <div class="font-bold text-slate-700">{{ f.nombre }}</div>
-                <div class="text-[10px] text-slate-400 font-bold uppercase">{{ f.moneda }}</div>
-              </td>
-              <td class="p-3 text-right">
-                <div class="font-bold text-slate-800">{{ Number(f.monto_sistema).toLocaleString() }}</div>
-                <div class="text-[10px] text-slate-400">{{ formatCurrency(Number(f.monto_sistema_usd)) }}</div>
-              </td>
-              <td class="p-3 text-right w-48">
-                <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full" />
-                <div class="text-[10px] text-slate-400 mt-1">{{ formatCurrency(f.contadoUsd) }}</div>
-              </td>
-              <td class="p-3 text-right">
-                <span class="text-xs font-bold text-slate-500">{{ f.tasa.toLocaleString() }}</span>
-              </td>
-              <td class="p-3 text-right">
-                <div class="font-black" :class="f.diferencia === 0 ? 'text-slate-500' : f.diferencia > 0 ? 'text-emerald-700' : 'text-red-700'">
+
+        <!-- VISTA DESKTOP: Tabla Tradicional -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <tr>
+                <th class="p-3 text-left">Método</th>
+                <th class="p-3 text-right">Sistema</th>
+                <th class="p-3 text-right">Contado</th>
+                <th class="p-3 text-right">Tasa</th>
+                <th class="p-3 text-right">Diferencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="filasCierre.length === 0">
+                <td colspan="5" class="p-10 text-center text-slate-400 italic">Sin operaciones desde el último cierre.</td>
+              </tr>
+              <tr v-for="f in filasCierre" :key="f.metodo_pago_id" class="border-t border-slate-100">
+                <td class="p-3">
+                  <div class="font-bold text-slate-700">{{ f.nombre }}</div>
+                  <div class="text-[10px] text-slate-400 font-bold uppercase">{{ f.moneda }}</div>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="font-bold text-slate-800">{{ Number(f.monto_sistema).toLocaleString() }}</div>
+                  <div class="text-[10px] text-slate-400">{{ formatCurrency(Number(f.monto_sistema_usd)) }}</div>
+                </td>
+                <td class="p-3 text-right w-48">
+                  <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full" />
+                  <div class="text-[10px] text-slate-400 mt-1">{{ formatCurrency(f.contadoUsd) }}</div>
+                </td>
+                <td class="p-3 text-right">
+                  <span class="text-xs font-bold text-slate-500">{{ f.tasa.toLocaleString() }}</span>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="font-black" :class="f.diferencia === 0 ? 'text-slate-500' : f.diferencia > 0 ? 'text-emerald-700' : 'text-red-700'">
+                    {{ f.diferencia >= 0 ? '+' : '' }}{{ f.diferencia.toLocaleString() }}
+                  </div>
+                  <div class="text-[10px]" :class="f.diferenciaUsd === 0 ? 'text-slate-400' : f.diferenciaUsd > 0 ? 'text-emerald-500' : 'text-red-500'">
+                    {{ formatCurrency(f.diferenciaUsd) }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- VISTA MÓVIL: Lista de Tarjetas (Evita Scroll Horizontal) -->
+        <div class="md:hidden divide-y divide-slate-100">
+          <div v-if="filasCierre.length === 0" class="p-10 text-center text-slate-400 italic text-sm">
+            Sin operaciones registradas.
+          </div>
+          <div v-for="f in filasCierre" :key="f.metodo_pago_id" class="p-4 space-y-4">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="text-sm font-black text-slate-800 uppercase tracking-tight">{{ f.nombre }}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase bg-slate-50 px-2 py-0.5 rounded border border-slate-100 inline-block mt-1">{{ f.moneda }}</div>
+              </div>
+              <div class="text-right">
+                <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Diferencia</span>
+                <div class="text-sm font-black" :class="f.diferencia === 0 ? 'text-slate-500' : f.diferencia > 0 ? 'text-emerald-700' : 'text-red-700'">
                   {{ f.diferencia >= 0 ? '+' : '' }}{{ f.diferencia.toLocaleString() }}
                 </div>
-                <div class="text-[10px]" :class="f.diferenciaUsd === 0 ? 'text-slate-400' : f.diferenciaUsd > 0 ? 'text-emerald-500' : 'text-red-500'">
-                  {{ formatCurrency(f.diferenciaUsd) }}
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">En Sistema</span>
+                <div class="text-sm font-bold text-slate-700">{{ Number(f.monto_sistema).toLocaleString() }}</div>
+                <div class="text-[10px] text-slate-400">{{ formatCurrency(Number(f.monto_sistema_usd)) }}</div>
+              </div>
+              <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Tasa Ref.</span>
+                <div class="text-sm font-bold text-slate-600">{{ f.tasa.toLocaleString() }}</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-black text-blue-600 uppercase block mb-1.5">Monto Contado en {{ f.moneda }}</label>
+              <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full h-12 text-lg" />
+              <div class="flex justify-between items-center mt-2 px-1">
+                <span class="text-[10px] font-bold text-slate-400 uppercase">Equivalente:</span>
+                <span class="text-xs font-black text-slate-600">{{ formatCurrency(f.contadoUsd) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="flex flex-col gap-4">
