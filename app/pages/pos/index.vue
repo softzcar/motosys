@@ -6,6 +6,7 @@ import { useOfflineDb, db } from '~/composables/useOfflineDb'
 import { useNetworkStore } from '~/stores/network'
 
 const cart = useCartStore()
+const { perfil } = usePerfil() // INYECTAR PERFIL
 const { procesarVenta } = useVentas()
 const { fetchVentaById, fetchProductos } = useProductos()
 const { getClienteByCedula, crearCliente, fetchClientes } = useClientes()
@@ -363,15 +364,19 @@ const finalizarVenta = async () => {
 
         let ventaId = null
         let numFactura = '---'
-if (networkStore.isOnline) {
-  // --- MODO ONLINE: Supabase ---
-  ventaId = await procesarVenta(
-    items, 
-    payloadPagos, 
-    clientId!, 
-    corrigeVentaId.value ?? undefined,
-    perfil.value?.id // Enviar ID del vendedor responsable
-  )
+
+        if (networkStore.isOnline) {
+          // --- MODO ONLINE: Supabase ---
+          const vendedorId = perfil.value?.id
+          if (!vendedorId) throw new Error('Sesión de vendedor no detectada. Por favor, refresque la página.')
+
+          ventaId = await procesarVenta(
+            items, 
+            payloadPagos, 
+            clientId!, 
+            corrigeVentaId.value ?? undefined,
+            vendedorId
+          )
   const { data: nuevaVenta } = await client.from('ventas').select('numero').eq('id', ventaId).single()
           numFactura = nuevaVenta?.numero ?? '---'
           lastVentaId.value = ventaId

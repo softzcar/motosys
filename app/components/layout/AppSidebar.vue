@@ -39,13 +39,15 @@ const handleNavigation = (e: Event, path: string) => {
     return
   }
 
-  // Si está offline y no es el POS, bloqueamos
+  // Si está offline y no es el POS, bloqueamos radicalmente
   if (!networkStore.isOnline) {
     e.preventDefault()
+    e.stopPropagation()
+    
     toast.add({
       severity: 'warn',
-      summary: 'Acceso No Disponible',
-      detail: 'Esta página requiere conexión a internet.',
+      summary: 'Modo Fuera de Línea',
+      detail: 'Esta opción solo está disponible con internet.',
       life: 3000
     })
     return

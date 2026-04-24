@@ -13,17 +13,26 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!networkStore.isOnline) {
     const localPerfil = await getLocalPerfil()
     
+    // Rutas permitidas en modo offline
+    const allowedOffline = ['/pos', '/login', '/forbidden']
+    const isAllowedOffline = allowedOffline.some(route => to.path.startsWith(route))
+
     // Si no hay perfil local y no es una ruta pública, al login
     if (!localPerfil && !isPublic) {
       return navigateTo('/login')
     }
     
+    // Si estamos offline y la ruta no está permitida, bloqueamos
+    if (!isAllowedOffline && !isPublic) {
+       return navigateTo('/pos') 
+    }
+
     // Si hay perfil local y estamos en login, pal POS
     if (localPerfil && isPublic && to.path !== '/forbidden') {
       return navigateTo('/pos')
     }
 
-    // RBAC Offline para Vendedores
+    // RBAC Offline para Vendedores (Adicional)
     if (localPerfil && localPerfil.rol === 'vendedor') {
        const allowedVendorRoutes = ['/pos', '/reportes/ventas', '/forbidden']
        const isAllowed = allowedVendorRoutes.some(route => to.path.startsWith(route))

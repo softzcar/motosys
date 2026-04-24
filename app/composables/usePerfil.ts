@@ -49,9 +49,20 @@ export const usePerfil = () => {
       const error = result?.error
 
       if (error) {
-        console.error('[usePerfil] Error Supabase:', error)
+        // Silenciamos errores de fetch para evitar Toasts técnicos
+        console.warn('[usePerfil] Error de conexión con Supabase (silenciado):', error.message)
         if (perfil.value) return // Mantener el que tenemos
-        throw error
+        
+        // Si no tenemos perfil, intentamos una última vez el local
+        if (import.meta.client) {
+          const { getLocalPerfil } = useOfflineDb()
+          const local = await getLocalPerfil()
+          if (local && local.id === uid) {
+            perfil.value = local
+            return
+          }
+        }
+        return 
       }
       
       if (!data) {
