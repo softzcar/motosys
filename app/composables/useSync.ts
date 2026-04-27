@@ -8,7 +8,7 @@ export const useSync = () => {
   const { fetchProductos } = useProductos()
   const { fetchTasas } = useTasas()
   const { fetchMetodosPago } = useMetodosPago()
-  const { cacheProductos, cacheClientes, cacheTasas, cacheMetodos } = useOfflineDb()
+  const { cacheProductos, cacheClientes, cacheTasas, cacheMetodos, purgeOldData } = useOfflineDb()
   const toast = useToast()
 
   const syncMasterData = async () => {
@@ -30,6 +30,9 @@ export const useSync = () => {
       // 4. Métodos
       const mData = await fetchMetodosPago()
       if (mData) await cacheMetodos(mData.filter(m => m.activo))
+
+      // Aprovechar el sync de catálogo para purgar datos viejos
+      await purgeOldData()
 
       console.log('[SyncEngine] ✅ Catálogo maestro actualizado localmente')
     } catch (e) {
@@ -53,6 +56,8 @@ export const useSync = () => {
       const pendientes = todas.filter(v => !v.sincronizada)
       
       if (pendientes.length === 0) {
+        // Aun si no hay pendientes, intentamos purgar si hay internet
+        await purgeOldData()
         networkStore.releaseSyncLock()
         return
       }
@@ -83,7 +88,7 @@ export const useSync = () => {
           
           const { perfil } = usePerfil()
           await procesarVenta(v.items, v.pagos, finalClientId!, undefined, perfil.value?.id)
-          await db.ventas_pendientes.delete(v.id_temporal)
+          // Ya no eliminamos inmediatamente para permitir historial local (Purga se encarga después)
           exitos++
         } catch (error) {
           await db.ventas_pendientes.update(v.id_temporal, { sincronizada: false })
@@ -92,6 +97,7 @@ export const useSync = () => {
       }
 
       if (exitos > 0) {
+        await purgeOldData()
         toast.add({ 
           severity: 'success', 
           summary: 'Sincronización Completada', 

@@ -614,7 +614,7 @@ const handleHistoryClick = () => {
                         <Select v-model="selectedMetodoId" :options="metodos" optionLabel="nombre" optionValue="id" placeholder="Seleccione Método" class="w-full" />
                         <InputText v-if="requiereReferencia" v-model="referenciaAbono" placeholder="Número de referencia" class="w-full border-blue-500 ring-1 ring-blue-500/20 bg-blue-50/10" />
                         <div class="flex gap-2">
-                            <InputNumber :model-value="montoAbono" @input="(e) => montoAbono = e.value ?? 0" mode="decimal" :minFractionDigits="2" placeholder="Monto" class="flex-1" :disabled="!selectedMetodoId" />
+                            <InputNumber :model-value="montoAbono" @input="(e) => montoAbono = e.value ?? 0" mode="decimal" :minFractionDigits="2" placeholder="Monto" class="flex-1" :disabled="!selectedMetodoId" @focus="$event => ($event.target as HTMLInputElement).select()" />
                             <Button @click="agregarPago" severity="success" class="aspect-square !p-0 flex items-center justify-center" :disabled="!selectedMetodoId"><Plus class="w-5 h-5" /></Button>
                         </div>
                     </div>

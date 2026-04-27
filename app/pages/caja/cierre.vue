@@ -34,14 +34,33 @@ const filasCierre = computed(() => {
     const tasa = tasaParaMoneda(p.moneda)
     const contadoUsd = p.moneda === 'USD' ? contado : (tasa > 0 ? contado / tasa : 0)
     const diferencia = contado - Number(p.monto_sistema)
-    const diferenciaUsd = contadoUsd - Number(p.monto_sistema_usd)
+    // Para evitar discrepancias por tasas históricas, calculamos la diferencia USD basándonos en la diferencia BS / Tasa actual
+    const diferenciaUsd = p.moneda === 'USD' ? diferencia : (tasa > 0 ? diferencia / tasa : 0)
     return { ...p, contado, tasa, contadoUsd, diferencia, diferenciaUsd }
   })
 })
 
-const totalSistemaUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + Number(f.monto_sistema_usd), 0))
+const totalSistemaUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + (f.moneda === 'USD' ? Number(f.monto_sistema) : (f.tasa > 0 ? Number(f.monto_sistema) / f.tasa : 0)), 0))
 const totalContadoUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + f.contadoUsd, 0))
-const totalDiferenciaUsd = computed(() => totalContadoUsd.value - totalSistemaUsd.value)
+const totalDiferenciaUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + f.diferenciaUsd, 0))
+
+const chartData = computed(() => {
+  const total = totalSistemaUsd.value || 1
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+  return filasCierre.value
+    .filter(f => Number(f.monto_sistema) > 0)
+    .sort((a, b) => (Number(b.monto_sistema) / (tasaParaMoneda(b.moneda) || 1)) - (Number(a.monto_sistema) / (tasaParaMoneda(a.moneda) || 1)))
+    .map((f, i) => {
+      const tasa = tasaParaMoneda(f.moneda)
+      const valorUsd = f.moneda === 'USD' ? Number(f.monto_sistema) : (tasa > 0 ? Number(f.monto_sistema) / tasa : 0)
+      const porcentaje = (valorUsd / total) * 100
+      return {
+        nombre: f.nombre,
+        porcentaje,
+        color: colors[i % colors.length]
+      }
+    })
+})
 
 const loadPreview = async () => {
   loading.value = true
@@ -147,12 +166,17 @@ onMounted(loadPreview)
                   <div class="text-[10px] text-slate-400 font-bold uppercase">{{ f.moneda }}</div>
                 </td>
                 <td class="p-3 text-right">
-                  <div class="font-bold text-slate-800">{{ Number(f.monto_sistema).toLocaleString() }}</div>
+                  <div 
+                    class="font-bold text-slate-800 cursor-pointer hover:text-blue-600 hover:bg-blue-50 rounded px-1 transition-colors"
+                    title="Clic para copiar al contado"
+                    @click="contados[f.metodo_pago_id] = Number(f.monto_sistema)"
+                  >
+                    {{ Number(f.monto_sistema).toLocaleString() }}
+                  </div>
                   <div class="text-[10px] text-slate-400">{{ formatCurrency(Number(f.monto_sistema_usd)) }}</div>
                 </td>
                 <td class="p-3 text-right w-48">
-                  <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full" />
-                  <div class="text-[10px] text-slate-400 mt-1">{{ formatCurrency(f.contadoUsd) }}</div>
+                  <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full" @focus="$event => ($event.target as HTMLInputElement).select()" />                  <div class="text-[10px] text-slate-400 mt-1">{{ formatCurrency(f.contadoUsd) }}</div>
                 </td>
                 <td class="p-3 text-right">
                   <span class="text-xs font-bold text-slate-500">{{ f.tasa.toLocaleString() }}</span>
@@ -190,8 +214,11 @@ onMounted(loadPreview)
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-              <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">En Sistema</span>
+              <div 
+                class="p-3 bg-slate-50 rounded-lg border border-slate-100 cursor-pointer hover:bg-blue-50 hover:border-blue-200 active:scale-95 transition-all"
+                @click="contados[f.metodo_pago_id] = Number(f.monto_sistema)"
+              >
+                <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">En Sistema (Clic p/ copiar)</span>
                 <div class="text-sm font-bold text-slate-700">{{ Number(f.monto_sistema).toLocaleString() }}</div>
                 <div class="text-[10px] text-slate-400">{{ formatCurrency(Number(f.monto_sistema_usd)) }}</div>
               </div>
@@ -203,8 +230,7 @@ onMounted(loadPreview)
 
             <div>
               <label class="text-[10px] font-black text-blue-600 uppercase block mb-1.5">Monto Contado en {{ f.moneda }}</label>
-              <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full h-12 text-lg" />
-              <div class="flex justify-between items-center mt-2 px-1">
+              <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full h-12 text-lg" @focus="$event => ($event.target as HTMLInputElement).select()" />              <div class="flex justify-between items-center mt-2 px-1">
                 <span class="text-[10px] font-bold text-slate-400 uppercase">Equivalente:</span>
                 <span class="text-xs font-black text-slate-600">{{ formatCurrency(f.contadoUsd) }}</span>
               </div>
@@ -236,6 +262,34 @@ onMounted(loadPreview)
               <span class="text-lg font-black" :class="totalDiferenciaUsd === 0 ? 'text-slate-700' : totalDiferenciaUsd > 0 ? 'text-emerald-700' : 'text-red-700'">
                 {{ formatCurrency(totalDiferenciaUsd) }}
               </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfico de Distribución -->
+        <div v-if="chartData.length > 0" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Distribución por Método</p>
+          <div class="flex flex-col gap-4">
+            <!-- Barra de Distribución Compuesta -->
+            <div class="h-4 w-full rounded-full overflow-hidden flex bg-slate-100 ring-1 ring-slate-200">
+              <div 
+                v-for="item in chartData" 
+                :key="item.nombre"
+                :style="{ width: item.porcentaje + '%', backgroundColor: item.color }"
+                class="h-full transition-all duration-500"
+                v-tooltip="`${item.nombre}: ${item.porcentaje.toFixed(1)}%`"
+              ></div>
+            </div>
+            
+            <!-- Leyenda -->
+            <div class="grid grid-cols-1 gap-2">
+              <div v-for="item in chartData" :key="item.nombre" class="flex items-center justify-between group">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                  <span class="text-[10px] font-bold text-slate-600 truncate max-w-[120px]">{{ item.nombre }}</span>
+                </div>
+                <span class="text-[10px] font-black text-slate-400 group-hover:text-slate-700 transition-colors">{{ item.porcentaje.toFixed(1) }}%</span>
+              </div>
             </div>
           </div>
         </div>

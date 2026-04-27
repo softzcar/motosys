@@ -13,7 +13,7 @@ const { fetchVentas, fetchVentaById, fetchVendedoresConVentas, anularVenta } = u
 const { fetchProductos } = useProductos()
 const { fetchAllCategorias } = useCategoriasProductos()
 const { fetchCompras, getCompraById } = useCompras()
-const { fetchCierres, getCierreById } = useCierresCaja()
+const { fetchCierres, fetchCierreById } = useCierresCaja()
 const { isAdmin } = usePerfil()
 
 // --- ESTADOS ---
@@ -357,7 +357,7 @@ const openCierreDetails = async (cierre: any) => {
   closureDetailsModal.value = true
   loadingClosureDetails.value = true
   try {
-    const fullCierre = await getCierreById(cierre.id)
+    const fullCierre = await fetchCierreById(cierre.id)
     selectedClosure.value = fullCierre
   } catch (error: any) {
     toast.add({ severity: 'error', summary: 'Error al obtener el detalle', detail: error.message, life: 3000 })
@@ -431,7 +431,7 @@ const debouncedSearchVentasCliente = useDebounceFn(loadVentasPorCliente, 500)
 
 const formatCurrency = (value: number) => {
   if (value === undefined || value === null) return '$0.00'
-  return value.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
 const formatDate = (dateString: string) => {
@@ -440,6 +440,27 @@ const formatDate = (dateString: string) => {
 
 const formatDateTime = (dateString: string) => {
   return new Date(dateString).toLocaleString('es-VE')
+}
+
+// Funciones para limpiar totales (Recalcula al vuelo para evitar ruidos de la DB)
+const getCleanSistemaUsd = (cierre: any) => {
+  if (!cierre?.cierres_caja_detalle) return Number(cierre?.total_sistema_usd || 0)
+  return cierre.cierres_caja_detalle.reduce((acc: number, d: any) => {
+    const tasa = Number(d.tasa_referencia) || 1
+    const monto = Number(d.monto_sistema)
+    const valorUsd = d.metodos_pago?.moneda === 'USD' ? monto : (monto / tasa)
+    return acc + valorUsd
+  }, 0)
+}
+
+const getCleanContadoUsd = (cierre: any) => {
+  if (!cierre?.cierres_caja_detalle) return Number(cierre?.total_contado_usd || 0)
+  return cierre.cierres_caja_detalle.reduce((acc: number, d: any) => {
+    const tasa = Number(d.tasa_referencia) || 1
+    const monto = Number(d.monto_contado)
+    const valorUsd = d.metodos_pago?.moneda === 'USD' ? monto : (monto / tasa)
+    return acc + valorUsd
+  }, 0)
 }
 </script>
 
@@ -627,20 +648,20 @@ const formatDateTime = (dateString: string) => {
                           <span class="font-bold text-slate-700">{{ slotProps.data.responsable?.nombre }}</span>
                        </template>
                     </Column>
-                    <Column field="total_ventas_usd" header="Total Ventas (USD)">
-                       <template #body="slotProps">
-                          {{ formatCurrency(slotProps.data.total_ventas_usd) }}
+                    <Column header="Sistema (USD)">
+                       <template #body="{ data }">
+                          {{ formatCurrency(getCleanSistemaUsd(data)) }}
                        </template>
                     </Column>
-                    <Column field="total_caja_usd" header="Efectivo en Caja">
-                       <template #body="slotProps">
-                          {{ formatCurrency(slotProps.data.total_caja_usd) }}
+                    <Column header="Contado (USD)">
+                       <template #body="{ data }">
+                          {{ formatCurrency(getCleanContadoUsd(data)) }}
                        </template>
                     </Column>
-                    <Column field="diferencia_usd" header="Diferencia">
-                       <template #body="slotProps">
-                          <span :class="Number(slotProps.data.diferencia_usd) < 0 ? 'text-rose-600' : 'text-emerald-600'" class="font-black">
-                             {{ formatCurrency(slotProps.data.diferencia_usd) }}
+                    <Column header="Diferencia">
+                       <template #body="{ data }">
+                          <span :class="(getCleanContadoUsd(data) - getCleanSistemaUsd(data)) < 0 ? 'text-rose-600' : (getCleanContadoUsd(data) - getCleanSistemaUsd(data)) > 0 ? 'text-emerald-600' : 'text-slate-500'" class="font-black">
+                             USD {{ (getCleanContadoUsd(data) - getCleanSistemaUsd(data)).toFixed(2) }}
                           </span>
                        </template>
                     </Column>
@@ -929,20 +950,59 @@ const formatDateTime = (dateString: string) => {
                  <p class="font-bold text-slate-800">{{ selectedClosure.responsable?.nombre }}</p>
               </div>
               <div class="text-right">
-                 <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Fecha</p>
-                 <p class="font-bold text-slate-800">{{ formatDateTime(selectedClosure.fecha) }}</p>
+                 <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Fecha de Ejecución</p>
+                 <p class="font-bold text-slate-800">{{ formatDateTime(selectedClosure.created_at) }}</p>
               </div>
            </div>
+
            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
-              <span class="text-xs font-bold text-blue-600 uppercase">Ventas totales registradas</span>
-              <span class="text-xl font-black text-blue-700">{{ formatCurrency(selectedClosure.total_ventas_usd) }}</span>
+              <span class="text-xs font-bold text-blue-600 uppercase">Sistema (Dólares Ref.)</span>
+              <span class="text-xl font-black text-blue-700">{{ formatCurrency(getCleanSistemaUsd(selectedClosure)) }}</span>
+           </div>
+           <!-- Tabla de Detalles -->
+           <div class="border border-slate-100 rounded-xl overflow-hidden">
+              <table class="w-full text-sm">
+                 <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <tr>
+                       <th class="p-3 text-left">Método</th>
+                       <th class="p-3 text-right">Sistema</th>
+                       <th class="p-3 text-right">Contado</th>
+                       <th class="p-3 text-right">Diferencia</th>
+                    </tr>
+                 </thead>
+                 <tbody>
+                    <tr v-for="d in selectedClosure.cierres_caja_detalle" :key="d.id" class="border-t border-slate-100">
+                       <td class="p-3">
+                          <div class="font-bold text-slate-700">{{ d.metodos_pago?.nombre }}</div>
+                          <div class="text-[10px] text-slate-400 uppercase">{{ d.metodos_pago?.moneda }}</div>
+                       </td>
+                       <td class="p-3 text-right">
+                          <div class="font-bold">{{ Number(d.monto_sistema).toLocaleString() }}</div>
+                          <div class="text-[10px] text-slate-400">{{ formatCurrency(d.monto_sistema_usd) }}</div>
+                       </td>
+                       <td class="p-3 text-right">
+                          <div class="font-bold">{{ Number(d.monto_contado).toLocaleString() }}</div>
+                          <div class="text-[10px] text-slate-400">{{ formatCurrency(d.monto_contado_usd) }}</div>
+                       </td>
+                       <td class="p-3 text-right">
+                          <span class="font-black" :class="Number(d.diferencia) === 0 ? 'text-slate-500' : Number(d.diferencia) > 0 ? 'text-emerald-700' : 'text-red-700'">
+                             {{ Number(d.diferencia).toLocaleString() }}
+                          </span>
+                       </td>
+                    </tr>
+                 </tbody>
+              </table>
+           </div>
+
+           <div v-if="selectedClosure.observaciones" class="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <p class="text-[10px] text-amber-700 font-bold uppercase mb-1">Observaciones</p>
+              <p class="text-sm text-amber-900 whitespace-pre-wrap">{{ selectedClosure.observaciones }}</p>
            </div>
         </div>
         <template #footer>
            <Button label="Cerrar" text severity="secondary" @click="closureDetailsModal = false" />
         </template>
      </Dialog>
-
      <Dialog v-model:visible="auditoriaDetailModal" :style="{ width: '600px' }" modal header="Detalle de Auditoría">
         <div v-if="selectedAuditoria" class="space-y-4 pt-2">
            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">

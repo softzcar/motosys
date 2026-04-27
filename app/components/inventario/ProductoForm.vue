@@ -254,6 +254,7 @@ const handleSubmit = () => {
         :invalid="!!errors.stock"
         class="w-full"
         :disabled="!form.activo"
+        @focus="$event => ($event.target as HTMLInputElement).select()"
       />
       <small v-if="errors.stock" class="text-red-600 text-xs">{{ errors.stock }}</small>
     </div>
@@ -274,6 +275,7 @@ const handleSubmit = () => {
         :invalid="!!errors.precio_venta"
         class="w-full"
         :disabled="!form.activo"
+        @focus="$event => ($event.target as HTMLInputElement).select()"
       />
       <small v-if="errors.precio_venta" class="text-red-600 text-xs">{{ errors.precio_venta }}</small>
     </div>

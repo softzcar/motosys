@@ -98,8 +98,8 @@ onMounted(() => {
                     :maxFractionDigits="4" 
                     fluid
                     :input-class="['pr-12 text-sm font-semibold', { 'bg-slate-100 opacity-70': tasa.is_auto }]"
-                 />
-                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none uppercase">
+                    @focus="$event => ($event.target as HTMLInputElement).select()"
+                    />                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none uppercase">
                     {{ tasa.codigo === 'COP' ? 'COP' : 'Bs' }}
                  </span>
               </div>

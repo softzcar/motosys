@@ -376,8 +376,7 @@ const formatCurrency = (value: number) => {
                      </div>
                   </div>
                   <div v-if="isIvaManual" class="w-full">
-                     <InputNumber v-model="purchase.iva" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" :min="0" />
-                  </div>
+                     <InputNumber v-model="purchase.iva" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" :min="0" @focus="$event => ($event.target as HTMLInputElement).select()" />                  </div>
                   <div v-else class="text-right">
                      <span class="text-sm font-bold text-slate-800">{{ formatCurrency(purchase.iva) }}</span>
                      <span class="text-[9px] text-slate-400 ml-2">(Auto: {{ empresaIvaConfig }}%)</span>
@@ -429,11 +428,11 @@ const formatCurrency = (value: number) => {
             <div class="flex flex-col sm:flex-row gap-4 items-end">
                <div class="flex-1 w-full sm:w-auto">
                  <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Cantidad</label>
-                 <InputNumber v-model="itemCantidad" :min="1" class="w-full" />
+                 <InputNumber v-model="itemCantidad" :min="1" class="w-full" @focus="$event => ($event.target as HTMLInputElement).select()" />
                </div>
                <div class="flex-1 w-full sm:w-auto">
                  <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Costo Unitario ($)</label>
-                 <InputNumber v-model="itemCosto" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" />
+                 <InputNumber v-model="itemCosto" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" @focus="$event => ($event.target as HTMLInputElement).select()" />
                </div>
                <div class="w-full sm:w-auto">
                  <Button 
@@ -465,6 +464,7 @@ const formatCurrency = (value: number) => {
                   :inputStyle="{ width: '4rem', textAlign: 'center' }"
                   @update:modelValue="recalcItem(slotProps.index)"
                   class="cart-qty"
+                  @focus="$event => ($event.target as HTMLInputElement).select()"
                 />
               </template>
             </Column>
@@ -480,6 +480,7 @@ const formatCurrency = (value: number) => {
                   @update:modelValue="recalcItem(slotProps.index)"
                   :inputStyle="{ textAlign: 'right', width: '100%' }"
                   class="cart-cost"
+                  @focus="$event => ($event.target as HTMLInputElement).select()"
                 />
               </template>
             </Column>

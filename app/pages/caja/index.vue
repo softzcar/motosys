@@ -424,8 +424,7 @@ onMounted(async () => {
 
         <div class="flex flex-col gap-2">
           <label class="text-xs font-bold text-slate-500 uppercase">Monto {{ selectedMetodo ? `(${selectedMetodo.moneda})` : '' }}</label>
-          <InputNumber v-model="form.monto" mode="decimal" :minFractionDigits="2" />
-          <div v-if="selectedMetodo && form.monto > 0" class="flex justify-between text-[11px] text-slate-500 px-1">
+          <InputNumber v-model="form.monto" mode="decimal" :minFractionDigits="2" @focus="$event => ($event.target as HTMLInputElement).select()" />          <div v-if="selectedMetodo && form.monto > 0" class="flex justify-between text-[11px] text-slate-500 px-1">
             <span>Tasa aplicada: <b>{{ tasaAplicada.toLocaleString() }}</b></span>
             <span>Equivale a <b>{{ formatCurrency(montoUsdCalc) }}</b></span>
           </div>

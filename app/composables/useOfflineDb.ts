@@ -89,6 +89,40 @@ export const useOfflineDb = () => {
     return id_temporal;
   };
 
+  const purgeOldData = async (tables: string[] = ['ventas_pendientes'], ttlDays: number = 7) => {
+    if (!import.meta.client) return;
+    
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() - ttlDays);
+    const thresholdStr = threshold.toISOString();
+
+    console.log(`[OfflineDB] Revisando purga automática (TTL: ${ttlDays} días)...`);
+
+    for (const tableName of tables) {
+      try {
+        const table = (db as any)[tableName];
+        if (!table) continue;
+
+        // Filtramos registros sincronizados cuya fecha sea menor al umbral
+        // Usamos filter para mayor flexibilidad con el formato de fecha ISO
+        const oldRecords = await table
+          .where('sincronizada')
+          .equals(1) // Dexie/IndexedDB suelen manejar 1/0 para booleano en índices
+          .or('sincronizada')
+          .equals(true)
+          .filter((r: any) => r.fecha < thresholdStr)
+          .primaryKeys();
+
+        if (oldRecords.length > 0) {
+          await table.bulkDelete(oldRecords);
+          console.log(`[OfflineDB] ✅ Purgados ${oldRecords.length} registros antiguos de "${tableName}"`);
+        }
+      } catch (error) {
+        console.error(`[OfflineDB] Error purgando tabla ${tableName}:`, error);
+      }
+    }
+  };
+
   return {
     isOnline: computed(() => networkStore.isOnline),
     cacheProductos,
@@ -98,6 +132,7 @@ export const useOfflineDb = () => {
     cachePerfil,
     getLocalPerfil,
     getAuthorizedProfile,
-    registrarVentaOffline
+    registrarVentaOffline,
+    purgeOldData
   };
 };

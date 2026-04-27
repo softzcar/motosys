@@ -295,7 +295,7 @@ onMounted(() => {
 
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700">IVA (%)</label>
-                    <InputNumber v-model="empresa.iva" mode="decimal" :minFractionDigits="1" :maxFractionDigits="2" suffix="%" placeholder="Ej: 16" />
+                    <InputNumber v-model="empresa.iva" mode="decimal" :minFractionDigits="1" :maxFractionDigits="2" suffix="%" placeholder="Ej: 16" @focus="$event => ($event.target as HTMLInputElement).select()" />
                   </div>
                 </div>
 
@@ -337,8 +337,7 @@ onMounted(() => {
                              <p class="text-xs text-slate-400 font-medium">Últ. act: {{ new Date(tasa.updated_at).toLocaleString('es') }}</p>
                           </div>
                           <div class="flex items-center gap-2">
-                             <InputNumber v-model="tasa.tasa" :disabled="tasa.is_auto" mode="decimal" :minFractionDigits="2" :maxFractionDigits="4" class="w-full" :class="{'opacity-70': tasa.is_auto}" />
-                             <span class="text-sm font-bold text-slate-400 w-12 text-center">{{ tasa.codigo === 'COP' ? 'COP' : 'Bs' }}</span>
+                             <InputNumber v-model="tasa.tasa" :disabled="tasa.is_auto" mode="decimal" :minFractionDigits="2" :maxFractionDigits="4" class="w-full" :class="{'opacity-70': tasa.is_auto}" @focus="$event => ($event.target as HTMLInputElement).select()" />                             <span class="text-sm font-bold text-slate-400 w-12 text-center">{{ tasa.codigo === 'COP' ? 'COP' : 'Bs' }}</span>
                           </div>
                           <p v-if="tasa.is_auto" class="text-[10px] text-slate-400 mt-2 text-center">Tasa bloqueada. Sincroniza desde el botón superior.</p>
                        </div>

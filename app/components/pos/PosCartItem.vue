@@ -31,6 +31,7 @@ const emit = defineEmits<{
       increment-button-class="p-button-sm p-button-secondary"
       :disabled="disabled"
       :tabindex="disabled ? -1 : 0"
+      @focus="$event => ($event.target as HTMLInputElement).select()"
       @update:model-value="emit('updateQuantity', item.producto.id, $event ?? 1)"
     />
 
