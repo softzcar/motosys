@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Producto, Cliente, Perfil } from '~/types/database';
+import type { Producto, Cliente, Perfil, CategoriaProducto } from '~/types/database';
 import { useNetworkStore } from '~/stores/network';
 
 export interface VentaOffline {
@@ -16,6 +16,7 @@ export interface VentaOffline {
 export class MotoSysDatabase extends Dexie {
   productos!: Table<Producto>;
   clientes!: Table<Cliente>;
+  categorias!: Table<CategoriaProducto>;
   tasas!: Table<any>;
   metodos_pago!: Table<any>;
   ventas_pendientes!: Table<VentaOffline>;
@@ -24,9 +25,10 @@ export class MotoSysDatabase extends Dexie {
 
   constructor() {
     super('MotoSysDB_v2');
-    this.version(3).stores({
+    this.version(4).stores({
       productos: 'id, nombre, codigo_parte, categoria_id, ubicacion',
       clientes: 'id, cedula, nombre',
+      categorias: 'id, nombre',
       tasas: 'codigo', 
       metodos_pago: 'id, nombre, moneda',
       ventas_pendientes: 'id_temporal, fecha, sincronizada',
@@ -69,6 +71,11 @@ export const useOfflineDb = () => {
     await db.clientes.bulkAdd(clients);
   };
 
+  const cacheCategorias = async (cats: CategoriaProducto[]) => {
+    await db.categorias.clear();
+    await db.categorias.bulkAdd(cats);
+  };
+
   const cacheTasas = async (tasas: any[]) => {
     await db.tasas.clear();
     await db.tasas.bulkAdd(tasas);
@@ -92,34 +99,35 @@ export const useOfflineDb = () => {
   const purgeOldData = async (tables: string[] = ['ventas_pendientes'], ttlDays: number = 7) => {
     if (!import.meta.client) return;
     
-    const threshold = new Date();
-    threshold.setDate(threshold.getDate() - ttlDays);
-    const thresholdStr = threshold.toISOString();
+    try {
+      const threshold = new Date();
+      threshold.setDate(threshold.getDate() - ttlDays);
+      const thresholdStr = threshold.toISOString();
 
-    console.log(`[OfflineDB] Revisando purga automática (TTL: ${ttlDays} días)...`);
+      console.log(`[OfflineDB] Revisando purga automática (registros > ${ttlDays} días)...`);
 
-    for (const tableName of tables) {
-      try {
+      for (const tableName of tables) {
         const table = (db as any)[tableName];
         if (!table) continue;
 
-        // Filtramos registros sincronizados cuya fecha sea menor al umbral
-        // Usamos filter para mayor flexibilidad con el formato de fecha ISO
-        const oldRecords = await table
-          .where('sincronizada')
-          .equals(1) // Dexie/IndexedDB suelen manejar 1/0 para booleano en índices
-          .or('sincronizada')
-          .equals(true)
-          .filter((r: any) => r.fecha < thresholdStr)
+        // Versión ultra-segura: cargamos solo lo necesario para filtrar
+        // Evitamos .where().equals() en booleanos si hay riesgo de tipos mezclados
+        const recordsToDelete = await table
+          .filter((r: any) => {
+            const isOld = r.fecha && r.fecha < thresholdStr;
+            const isSynced = r.sincronizada === true || r.sincronizada === 1;
+            return isOld && isSynced;
+          })
           .primaryKeys();
 
-        if (oldRecords.length > 0) {
-          await table.bulkDelete(oldRecords);
-          console.log(`[OfflineDB] ✅ Purgados ${oldRecords.length} registros antiguos de "${tableName}"`);
+        if (recordsToDelete.length > 0) {
+          await table.bulkDelete(recordsToDelete);
+          console.log(`[OfflineDB] ✅ Purgados ${recordsToDelete.length} registros antiguos de "${tableName}"`);
         }
-      } catch (error) {
-        console.error(`[OfflineDB] Error purgando tabla ${tableName}:`, error);
       }
+    } catch (error) {
+      // SILENCIOSO: La purga no es misión crítica, no debe romper el arranque
+      console.warn('[OfflineDB] Purga automática omitida o fallida:', error);
     }
   };
 
@@ -127,6 +135,7 @@ export const useOfflineDb = () => {
     isOnline: computed(() => networkStore.isOnline),
     cacheProductos,
     cacheClientes,
+    cacheCategorias,
     cacheTasas,
     cacheMetodos,
     cachePerfil,

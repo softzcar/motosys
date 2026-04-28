@@ -110,14 +110,9 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: '/',
-      globPatterns: [
-        '**/*.{js,css,html,png,svg,ico,woff2}', 
-        '_nuxt/**/*',
-        'android-icon-*.png',
-        'apple-icon-*.png',
-        'favicon-*.png'
-      ],
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
       cleanupOutdatedCaches: true,
+      suppressWarnings: true,
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
@@ -156,7 +151,7 @@ export default defineNuxtConfig({
       ]
     },
     devOptions: {
-      enabled: true,
+      enabled: false,
       type: 'module'
     }
   }

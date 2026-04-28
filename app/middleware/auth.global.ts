@@ -49,14 +49,26 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const localPerfil = await getLocalPerfil()
     if (localPerfil) {
       console.log('[Middleware] Usuario no detectado online, pero se permite acceso por perfil local persistente.')
+      // Poblar el estado global inmediatamente para que la UI responda
+      const { perfil } = usePerfil()
+      perfil.value = localPerfil
       return
     }
     
     return navigateTo('/login')
   }
 
-  if (user.value && isPublic && to.path !== '/forbidden') {
-    return navigateTo('/')
+  // Si estamos en una ruta pública y el usuario ya está autenticado (o tenemos perfil local), mandarlo al inicio
+  if (isPublic && to.path !== '/forbidden') {
+    if (user.value) return navigateTo('/')
+    
+    // Si no hay user online pero hay perfil local, también lo mandamos a casa (evita ver login si ya estabas logueado)
+    const localPerfil = await getLocalPerfil()
+    if (localPerfil) {
+      const { perfil } = usePerfil()
+      perfil.value = localPerfil
+      return navigateTo('/')
+    }
   }
 
   // Protección de rutas por rol (RBAC Online)

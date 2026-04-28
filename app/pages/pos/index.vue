@@ -244,6 +244,18 @@ const buscarCliente = async () => {
 }
 
 const proceedToPayment = async () => {
+  // Si el usuario presiona "Continuar a Pago" sin haber buscado la cédula previamente (clientFound === null)
+  if (clientFound.value === null && clientForm.value.cedula.trim()) {
+    await buscarCliente()
+    // Si después de buscar se encontró al cliente, detenemos para que el usuario verifique
+    if (clientFound.value) {
+      toast.add({ severity: 'success', summary: 'Cliente verificado', detail: 'Revise el nombre y presione continuar de nuevo.', life: 3000 })
+      return 
+    }
+    // Si NO se encontró, buscarCliente ya muestra el toast de "Cliente nuevo" y pone foco en nombre, así que paramos
+    return
+  }
+
   if (!clientForm.value.cedula || !clientForm.value.nombre) {
     toast.add({ severity: 'warn', summary: 'Faltan datos', detail: 'La cédula y el nombre son obligatorios', life: 3000 })
     return
@@ -289,6 +301,18 @@ const agregarPago = () => {
     const metodo = metodos.value.find(m => m.id === selectedMetodoId.value)
     if (!metodo) return
 
+    // VALIDACIÓN: Evitar duplicados del mismo método de pago
+    const yaExiste = pagos.value.some(p => p.metodo_pago_id === metodo.id)
+    if (yaExiste) {
+        toast.add({ 
+            severity: 'warn', 
+            summary: 'Método duplicado', 
+            detail: `Ya has añadido un pago con ${metodo.nombre}. Elimina el anterior si deseas cambiar el monto.`, 
+            life: 4000 
+        })
+        return
+    }
+
     const referenciaTrim = referenciaAbono.value.trim()
     if (metodo.requiere_detalle && !referenciaTrim) {
         toast.add({ severity: 'warn', summary: 'Referencia requerida', detail: `${metodo.nombre} requiere número de referencia`, life: 3000 })
@@ -321,6 +345,7 @@ const agregarPago = () => {
 
     montoAbono.value = 0
     referenciaAbono.value = ''
+    selectedMetodoId.value = null // Limpiar selector para evitar confusión
 }
 
 const eliminarPago = (index: number) => {

@@ -56,12 +56,7 @@ const handleLogin = async () => {
   }
 }
 onMounted(() => {
-  // Calentamiento preventivo del POS y el Layout mientras el usuario está en el login
-  if (import.meta.client && networkStore.isOnline) {
-    console.log('⚡ Preparando motor de ventas y layout para acceso rápido...')
-    import('~/layouts/default.vue').catch(() => {}) // Pre-cargar el marco principal
-    import('~/pages/pos/index.vue').catch(() => {}) // Pre-cargar la página de ventas
-  }
+  console.log('✅ LoginForm montado correctamente')
 })
 </script>
 

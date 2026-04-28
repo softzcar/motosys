@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, Barcode } from 'lucide-vue-next'
+import { Search, Barcode, LayoutGrid, X } from 'lucide-vue-next'
 import { useDebounceFn } from '@vueuse/core'
 import { useOfflineDb, db } from '~/composables/useOfflineDb'
 import type { Producto } from '~/types/database'
@@ -13,6 +13,7 @@ const search = ref('')
 const resultados = ref<Producto[]>([])
 const loading = ref(false)
 const searchInput = ref<any>(null)
+const showCategories = ref(false)
 
 const buscar = useDebounceFn(async () => {
   if (!search.value || search.value.length < 2) {
@@ -101,16 +102,29 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
         </div>
         <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-tighter">F2: Buscar</span>
       </div>
-      <IconField>
-        <InputIcon class="pi pi-search" />
-        <InputText
-          ref="searchInput"
-          v-model="search"
-          placeholder="Buscar producto por nombre o código..."
-          class="w-full"
-          @input="buscar"
-        />
-      </IconField>
+      
+      <div class="flex gap-2">
+        <IconField class="flex-1">
+          <InputIcon class="pi pi-search" />
+          <InputText
+            ref="searchInput"
+            v-model="search"
+            placeholder="Nombre o código..."
+            class="w-full"
+            @input="buscar"
+          />
+        </IconField>
+        
+        <Button 
+          severity="secondary" 
+          outlined 
+          class="aspect-square" 
+          title="Explorar por Categorías"
+          @click="showCategories = true"
+        >
+          <LayoutGrid :size="20" />
+        </Button>
+      </div>
     </div>
 
     <div class="flex-1 overflow-auto">
@@ -150,5 +164,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
         <p class="text-sm">Escanea un código o escribe para buscar</p>
       </div>
     </div>
+
+    <!-- Selector de Categorías -->
+    <PosCategorySelector 
+      v-model:visible="showCategories" 
+    />
   </div>
 </template>
