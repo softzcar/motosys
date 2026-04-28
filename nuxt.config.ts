@@ -112,7 +112,6 @@ export default defineNuxtConfig({
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
       cleanupOutdatedCaches: true,
-      suppressWarnings: true,
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
