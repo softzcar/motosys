@@ -79,12 +79,16 @@ useBarcodeScanner(async (code) => {
   }
 })
 
-// Shortcut F2 para buscar
+// Shortcut F2 para buscar y F4 para categorías
 const handleGlobalKey = (e: KeyboardEvent) => {
   // Solo si no hay un modal abierto (para evitar conflictos)
   if (e.key === 'F2') {
     e.preventDefault()
     searchInput.value?.$el?.focus?.() || searchInput.value?.focus?.()
+  }
+  if (e.key === 'F4') {
+    e.preventDefault()
+    showCategories.value = !showCategories.value
   }
 }
 
@@ -100,7 +104,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
           <Barcode :size="18" class="text-green-600" />
           <span class="text-xs text-green-600 font-medium">Scanner activo</span>
         </div>
-        <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-tighter">F2: Buscar</span>
+        <div class="flex gap-1.5">
+          <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-tighter">F2: Buscar</span>
+          <span class="text-[9px] font-bold text-blue-400 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter">F4: Categorías</span>
+        </div>
       </div>
       
       <div class="flex gap-2">

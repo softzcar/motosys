@@ -2,14 +2,13 @@ import { useOfflineDb } from '~/composables/useOfflineDb'
 import { useNetworkStore } from '~/stores/network'
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  const user = useSupabaseUser()
   const networkStore = useNetworkStore()
   const { getLocalPerfil } = useOfflineDb()
   
   const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/forbidden']
   const isPublic = publicRoutes.includes(to.path)
 
-  // 1. Verificación Offline (Misión Crítica)
+  // 1. Verificación Offline (Misión Crítica) - Ejecutar ANTES de cualquier llamada a Supabase
   if (!networkStore.isOnline) {
     const localPerfil = await getLocalPerfil()
     
@@ -43,6 +42,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   // 2. Verificación Online (Comportamiento estándar Supabase)
+  // Solo llamamos a useSupabaseUser() si estamos online para evitar el error de JWKS offline
+  const user = useSupabaseUser()
+  
   if (!user.value && !isPublic) {
     // BRECHA DE SEGURIDAD: Si estamos online pero Supabase aún no carga el user,
     // verificamos si hay un perfil local para evitar la expulsión inmediata.
