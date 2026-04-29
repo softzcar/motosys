@@ -123,19 +123,15 @@ export default defineNuxtConfig({
           }
         },
         {
-          urlPattern: ({ request }) => request.destination === 'document',
+          urlPattern: ({ request }) => request.destination === 'document' || request.mode === 'navigate',
           handler: 'NetworkFirst',
           options: { cacheName: 'pages-cache' }
         },
         {
-          urlPattern: ({ url }) => url.pathname.includes('/_nuxt/'),
+          urlPattern: ({ url }) => url.pathname.includes('/_nuxt/') || url.pathname.includes('.js') || url.pathname.includes('.css'),
           handler: 'CacheFirst',
           options: { 
-            cacheName: 'nuxt-internal-cache',
-            matchOptions: {
-              ignoreSearch: true,
-              ignoreVary: true
-            },
+            cacheName: 'static-resources',
             expiration: {
               maxEntries: 500,
               maxAgeSeconds: 60 * 60 * 24 * 30 // 30 días
@@ -149,8 +145,12 @@ export default defineNuxtConfig({
         }
       ]
     },
+    client: {
+      installPrompt: true,
+      periodicSyncForUpdates: 3600
+    },
     devOptions: {
-      enabled: false,
+      enabled: true,
       type: 'module'
     }
   }
