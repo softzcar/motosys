@@ -6,6 +6,7 @@ const props = defineProps<{
   filtros: {
     search?: string
     categoria?: string | null
+    marca?: string | null
     ubicacion?: string | null
   }
   loading?: boolean
@@ -53,10 +54,11 @@ const productosAgrupados = computed(() => {
            <p>EMITIDO: {{ formatDate(new Date()) }}</p>
            <p>
              FILTRO: 
-             <span v-if="filtros.categoria || filtros.ubicacion || filtros.search">
+             <span v-if="filtros.categoria || filtros.marca || filtros.ubicacion || filtros.search">
                {{ [
                  filtros.search ? `Búsqueda: "${filtros.search}"` : null,
                  filtros.categoria ? `Categoría: ${filtros.categoria}` : null,
+                 filtros.marca ? `Marca: ${filtros.marca}` : null,
                  filtros.ubicacion ? `Ubicación: ${filtros.ubicacion}` : null
                ].filter(Boolean).join(' | ') }}
              </span>
@@ -71,10 +73,11 @@ const productosAgrupados = computed(() => {
     </div>
 
     <!-- Filtros aplicados detalle -->
-    <div v-if="filtros.categoria || filtros.ubicacion || filtros.search" class="mb-4 text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
+    <div v-if="filtros.categoria || filtros.marca || filtros.ubicacion || filtros.search" class="mb-4 text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
       <span class="font-bold uppercase mr-2">Filtros Activos:</span>
       <span v-if="filtros.search" class="mr-3">Búsqueda: "{{ filtros.search }}"</span>
       <span v-if="filtros.categoria" class="mr-3">Categoría: {{ filtros.categoria }}</span>
+      <span v-if="filtros.marca" class="mr-3">Marca: {{ filtros.marca }}</span>
       <span v-if="filtros.ubicacion" class="mr-3">Ubicación: {{ filtros.ubicacion }}</span>
     </div>
 
@@ -99,6 +102,9 @@ const productosAgrupados = computed(() => {
             <td class="p-1 text-[9px] font-bold text-slate-600 border-r border-slate-200">{{ p.codigo_parte }}</td>
             <td class="p-1 text-[10px] font-medium leading-tight border-r border-slate-200">
                {{ p.nombre }}
+               <span v-if="!filtros.marca && p.marcas?.nombre" class="text-[7px] text-slate-900 font-bold uppercase ml-1">
+                  [{{ p.marcas.nombre }}]
+               </span>
                <span v-if="!filtros.categoria && p.categorias_productos?.nombre" class="text-[7px] text-slate-400 font-bold uppercase ml-1">
                   ({{ p.categorias_productos.nombre }})
                </span>

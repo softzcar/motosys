@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { Producto, CategoriaProducto } from '~/types/database'
+import type { Producto, CategoriaProducto, Marca } from '~/types/database'
 
 const { fetchProductos, fetchUbicaciones, eliminarProductoConMotivo, friendlyError } = useProductos()
 const { fetchAllCategorias } = useCategoriasProductos()
+const { fetchAllMarcas } = useMarcas()
 const { isAdmin } = usePerfil()
 const toast = useToast()
 
@@ -14,7 +15,9 @@ const currentSearch = ref('')
 const sortField = ref('nombre')
 const sortOrder = ref(1)
 const categorias = ref<CategoriaProducto[]>([])
+const marcas = ref<Marca[]>([])
 const selectedCategoriaId = ref<string | null>(null)
+const selectedMarcaId = ref<string | null>(null)
 const selectedUbicacion = ref<string | null>(null)
 const ubicaciones = ref<string[]>([])
 const soloActivos = ref(true)
@@ -37,6 +40,14 @@ const loadCategorias = async () => {
   }
 }
 
+const loadMarcas = async () => {
+  try {
+    marcas.value = await fetchAllMarcas()
+  } catch {
+    marcas.value = []
+  }
+}
+
 const loadProductos = async () => {
   loading.value = true
   try {
@@ -47,6 +58,7 @@ const loadProductos = async () => {
       sortField: sortField.value,
       sortOrder: sortOrder.value,
       categoriaId: selectedCategoriaId.value,
+      marcaId: selectedMarcaId.value,
       ubicacion: selectedUbicacion.value,
       soloActivos: soloActivos.value
     })
@@ -81,6 +93,12 @@ const handleSort = (event: { sortField: string; sortOrder: number }) => {
 
 const handleFilterCategoria = (id: string | null) => {
   selectedCategoriaId.value = id
+  currentPage.value = 0
+  loadProductos()
+}
+
+const handleFilterMarca = (id: string | null) => {
+  selectedMarcaId.value = id
   currentPage.value = 0
   loadProductos()
 }
@@ -136,7 +154,10 @@ const confirmarEliminacion = async () => {
 }
 
 onMounted(async () => {
-  await loadCategorias()
+  await Promise.all([
+    loadCategorias(),
+    loadMarcas()
+  ])
   await loadProductos()
 })
 </script>
@@ -147,6 +168,9 @@ onMounted(async () => {
       <h1 class="m-0 text-2xl font-bold text-slate-800">Inventario</h1>
       <div v-if="isAdmin" class="flex gap-2">
         <Button label="Imprimir Planilla" icon="pi pi-print" severity="info" outlined @click="imprimirReporte" class="shadow-sm" />
+        <NuxtLink to="/inventario/marcas">
+          <Button label="Marcas" icon="pi pi-bookmark" severity="secondary" outlined class="shadow-sm" />
+        </NuxtLink>
         <NuxtLink to="/inventario/categorias">
           <Button label="Categorías" icon="pi pi-tags" severity="secondary" outlined class="shadow-sm" />
         </NuxtLink>
@@ -163,7 +187,9 @@ onMounted(async () => {
       :sort-field="sortField"
       :sort-order="sortOrder"
       :categorias="categorias"
+      :marcas="marcas"
       :selected-categoria-id="selectedCategoriaId"
+      :selected-marca-id="selectedMarcaId"
       :ubicaciones="ubicaciones"
       :selected-ubicacion="selectedUbicacion"
       :solo-activos="soloActivos"
@@ -173,6 +199,7 @@ onMounted(async () => {
       @edit="handleEdit"
       @delete="handleDelete"
       @filter-categoria="handleFilterCategoria"
+      @filter-marca="handleFilterMarca"
       @filter-ubicacion="handleFilterUbicacion"
       @filter-activos="handleFilterActivos"
     />
@@ -227,6 +254,7 @@ onMounted(async () => {
       :filtros="{
         search: currentSearch,
         categoria: categorias.find(c => c.id === selectedCategoriaId)?.nombre,
+        marca: marcas.find(m => m.id === selectedMarcaId)?.nombre,
         ubicacion: selectedUbicacion
       }"
     />

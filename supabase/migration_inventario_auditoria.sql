@@ -61,6 +61,8 @@ BEGIN
     precio_venta = COALESCE((p_data->>'precio_venta')::numeric, precio_venta),
     imagen_url = CASE WHEN p_data ? 'imagen_url' THEN NULLIF(p_data->>'imagen_url','') ELSE imagen_url END,
     categoria_id = CASE WHEN p_data ? 'categoria_id' THEN NULLIF(p_data->>'categoria_id','')::uuid ELSE categoria_id END,
+    marca_id = CASE WHEN p_data ? 'marca_id' THEN NULLIF(p_data->>'marca_id','')::uuid ELSE marca_id END,
+    ubicacion = CASE WHEN p_data ? 'ubicacion' THEN NULLIF(p_data->>'ubicacion','') ELSE ubicacion END,
     activo = COALESCE((p_data->>'activo')::boolean, activo),
     updated_at = NOW()
   WHERE id = p_id

@@ -727,6 +727,11 @@ const getCleanContadoUsd = (cierre: any) => {
                 >
                    <Column field="codigo_parte" header="Código" sortable></Column>
                    <Column field="nombre" header="Producto" sortable></Column>
+                   <Column header="Marca" field="marca_id" sortable>
+                     <template #body="{ data }">
+                       <span class="text-xs font-medium text-slate-500">{{ data.marcas?.nombre || '-' }}</span>
+                     </template>
+                   </Column>
                    <Column field="stock" header="Existencia" sortable>
                      <template #body="slotProps">
                        <Tag :severity="slotProps.data.stock < 5 ? 'danger' : slotProps.data.stock < 15 ? 'warn' : 'success'" :value="String(slotProps.data.stock)" />

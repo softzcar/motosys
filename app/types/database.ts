@@ -14,6 +14,13 @@ export interface CategoriaProducto {
   updated_at: string
 }
 
+export interface Marca {
+  id: string
+  nombre: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Producto {
   id: string
   nombre: string
@@ -24,7 +31,9 @@ export interface Producto {
   activo: boolean
   ubicacion: string | null
   categoria_id: string | null
+  marca_id: string | null
   categorias_productos?: CategoriaProducto
+  marcas?: Marca
   created_at: string
   updated_at: string
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next'
-import type { Producto, CategoriaProducto } from '~/types/database'
+import type { Producto, CategoriaProducto, Marca } from '~/types/database'
 
 const props = defineProps<{
   producto?: Producto
@@ -13,9 +13,13 @@ const emit = defineEmits<{
 }>()
 
 const { fetchAllCategorias, createCategoria, friendlyError: categoriaFriendlyError } = useCategoriasProductos()
+const { fetchAllMarcas, createMarca, friendlyError: marcaFriendlyError } = useMarcas()
 
 const categorias = ref<CategoriaProducto[]>([])
 const loadingCategorias = ref(false)
+
+const marcas = ref<Marca[]>([])
+const loadingMarcas = ref(false)
 
 // Inline category creation modal state
 const showCategoriaModal = ref(false)
@@ -23,12 +27,19 @@ const newCategoriaNombre = ref('')
 const savingCategoria = ref(false)
 const categoriaModalError = ref('')
 
+// Inline brand creation modal state
+const showMarcaModal = ref(false)
+const newMarcaNombre = ref('')
+const savingMarca = ref(false)
+const marcaModalError = ref('')
+
 const form = ref({
   nombre: props.producto?.nombre ?? '',
   codigo_parte: props.producto?.codigo_parte ?? '',
   stock: props.producto?.stock ?? 0,
   precio_venta: props.producto?.precio_venta ?? 0,
   categoria_id: props.producto?.categoria_id ?? null as string | null,
+  marca_id: props.producto?.marca_id ?? null as string | null,
   activo: props.producto?.activo ?? true,
   ubicacion: props.producto?.ubicacion ?? ''
 })
@@ -42,6 +53,7 @@ watch(() => props.producto, (p) => {
       stock: p.stock,
       precio_venta: p.precio_venta,
       categoria_id: p.categoria_id,
+      marca_id: p.marca_id,
       activo: p.activo,
       ubicacion: p.ubicacion ?? ''
     }
@@ -62,10 +74,27 @@ const loadCategorias = async () => {
   }
 }
 
+const loadMarcas = async () => {
+  loadingMarcas.value = true
+  try {
+    marcas.value = await fetchAllMarcas()
+  } catch {
+    marcas.value = []
+  } finally {
+    loadingMarcas.value = false
+  }
+}
+
 const openCategoriaModal = () => {
   newCategoriaNombre.value = ''
   categoriaModalError.value = ''
   showCategoriaModal.value = true
+}
+
+const openMarcaModal = () => {
+  newMarcaNombre.value = ''
+  marcaModalError.value = ''
+  showMarcaModal.value = true
 }
 
 const handleCreateCategoria = async () => {
@@ -92,7 +121,34 @@ const handleCreateCategoria = async () => {
   }
 }
 
-onMounted(loadCategorias)
+const handleCreateMarca = async () => {
+  const nombre = newMarcaNombre.value.trim()
+  if (!nombre) {
+    marcaModalError.value = 'El nombre es obligatorio'
+    return
+  }
+  if (nombre.length < 2) {
+    marcaModalError.value = 'Debe tener al menos 2 caracteres'
+    return
+  }
+  savingMarca.value = true
+  marcaModalError.value = ''
+  try {
+    const nueva = await createMarca(nombre)
+    await loadMarcas()
+    form.value.marca_id = nueva.id
+    showMarcaModal.value = false
+  } catch (e: any) {
+    marcaModalError.value = marcaFriendlyError(e)
+  } finally {
+    savingMarca.value = false
+  }
+}
+
+onMounted(() => {
+  loadCategorias()
+  loadMarcas()
+})
 
 const validate = () => {
   const e: Record<string, string> = {}
@@ -133,6 +189,7 @@ const handleSubmit = () => {
       stock: form.value.stock as number,
       precio_venta: form.value.precio_venta as number,
       categoria_id: form.value.categoria_id || null,
+      marca_id: form.value.marca_id || null,
       activo: form.value.activo,
       ubicacion: form.value.ubicacion.trim() || null
     }
@@ -241,6 +298,36 @@ const handleSubmit = () => {
       </div>
     </div>
 
+    <!-- Marca -->
+    <div class="flex flex-col gap-1.5">
+      <label for="marca" class="text-sm font-medium text-slate-700">
+        Marca
+      </label>
+      <div class="flex gap-2 items-center">
+        <Select
+          id="marca"
+          v-model="form.marca_id"
+          :options="marcas"
+          option-label="nombre"
+          option-value="id"
+          placeholder="Seleccionar marca"
+          :loading="loadingMarcas"
+          show-clear
+          class="flex-1"
+          :disabled="!form.activo"
+        />
+        <Button
+          type="button"
+          severity="success"
+          class="aspect-square"
+          aria-label="Crear marca"
+          @click="openMarcaModal"
+          :disabled="!form.activo">
+          <Plus class="w-5 h-5" />
+        </Button>
+      </div>
+    </div>
+
     <!-- Stock -->
     <div class="flex flex-col gap-1.5 w-full">
       <label for="stock" class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
@@ -314,6 +401,37 @@ const handleSubmit = () => {
     <template #footer>
       <Button label="Cancelar" severity="secondary" :disabled="savingCategoria" @click="showCategoriaModal = false" />
       <Button label="Crear" :loading="savingCategoria" @click="handleCreateCategoria" />
+    </template>
+  </Dialog>
+
+  <!-- Modal crear marca inline -->
+  <Dialog
+    v-model:visible="showMarcaModal"
+    header="Nueva Marca"
+    modal
+    :style="{ width: '26rem' }"
+    :closable="!savingMarca"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5">
+        <label for="nueva-marca-nombre" class="text-sm font-medium text-slate-700">
+          Nombre <span class="text-red-500">*</span>
+        </label>
+        <InputText
+          id="nueva-marca-nombre"
+          v-model="newMarcaNombre"
+          placeholder="Ej: Honda, Yamaha, Suzuki..."
+          :invalid="!!marcaModalError"
+          @keyup.enter="handleCreateMarca"
+          autofocus
+        />
+        <small v-if="marcaModalError" class="text-red-600">{{ marcaModalError }}</small>
+      </div>
+    </div>
+
+    <template #footer>
+      <Button label="Cancelar" severity="secondary" :disabled="savingMarca" @click="showMarcaModal = false" />
+      <Button label="Crear" :loading="savingMarca" @click="handleCreateMarca" />
     </template>
   </Dialog>
 </template>

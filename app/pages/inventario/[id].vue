@@ -59,6 +59,7 @@ const confirmarDesactivacionAutomatica = async () => {
       nombre: producto.value.nombre,
       codigo_parte: producto.value.codigo_parte,
       categoria_id: producto.value.categoria_id,
+      marca_id: producto.value.marca_id,
       precio_venta: producto.value.precio_venta,
       ubicacion: producto.value.ubicacion,
       stock: 0,

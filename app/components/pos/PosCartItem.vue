@@ -26,9 +26,10 @@ const emit = defineEmits<{
       :max="item.producto.stock"
       show-buttons
       button-layout="horizontal"
-      :input-style="{ width: '3rem', textAlign: 'center' }"
-      decrement-button-class="p-button-sm p-button-secondary"
-      increment-button-class="p-button-sm p-button-secondary"
+      class="!w-32 flex-none"
+      :input-style="{ width: '3rem !important', textAlign: 'center', height: '2rem' }"
+      decrement-button-class="p-button-sm p-button-secondary !p-1 !w-8 !h-8"
+      increment-button-class="p-button-sm p-button-secondary !p-1 !w-8 !h-8"
       :disabled="disabled"
       :tabindex="disabled ? -1 : 0"
       @focus="$event => ($event.target as HTMLInputElement).select()"

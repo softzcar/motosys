@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Pencil, Trash2 } from 'lucide-vue-next'
 import { useDebounceFn } from '@vueuse/core'
-import type { Producto, CategoriaProducto } from '~/types/database'
+import type { Producto, CategoriaProducto, Marca } from '~/types/database'
 
 defineProps<{
   productos: Producto[]
@@ -10,7 +10,9 @@ defineProps<{
   sortField?: string
   sortOrder?: number
   categorias: CategoriaProducto[]
+  marcas: Marca[]
   selectedCategoriaId?: string | null
+  selectedMarcaId?: string | null
   ubicaciones?: string[]
   selectedUbicacion?: string | null
   soloActivos?: boolean
@@ -23,6 +25,7 @@ const emit = defineEmits<{
   search: [term: string]
   sort: [event: { sortField: string; sortOrder: number }]
   'filter-categoria': [id: string | null]
+  'filter-marca': [id: string | null]
   'filter-ubicacion': [val: string | null]
   'filter-activos': [value: boolean]
 }>()
@@ -37,6 +40,10 @@ const onSearch = useDebounceFn(() => {
 
 const onCategoriaChange = (value: string | null) => {
   emit('filter-categoria', value)
+}
+
+const onMarcaChange = (value: string | null) => {
+  emit('filter-marca', value)
 }
 
 const onUbicacionChange = (value: string | null) => {
@@ -65,10 +72,20 @@ const onActivosChange = (event: any) => {
         :options="categorias"
         option-label="nombre"
         option-value="id"
-        placeholder="Todas las categorías"
+        placeholder="Categoría"
         show-clear
         class="w-full md:w-48"
         @update:model-value="onCategoriaChange"
+      />
+      <Select
+        :model-value="selectedMarcaId"
+        :options="marcas"
+        option-label="nombre"
+        option-value="id"
+        placeholder="Marca"
+        show-clear
+        class="w-full md:w-48"
+        @update:model-value="onMarcaChange"
       />
       <Select
         :model-value="selectedUbicacion"
@@ -102,6 +119,16 @@ const onActivosChange = (event: any) => {
     >
       <Column field="codigo_parte" header="Código" sortable />
       <Column field="nombre" header="Nombre" sortable />
+      <Column header="Marca" sortable field="marca_id">
+        <template #body="{ data }">
+          <Tag
+            v-if="data.marcas?.nombre"
+            :value="data.marcas.nombre"
+            severity="secondary"
+          />
+          <span v-else class="text-slate-400 text-sm">Sin marca</span>
+        </template>
+      </Column>
       <Column field="ubicacion" header="Ubicación" sortable>
         <template #body="{ data }">
           <span class="text-xs font-medium text-slate-600">{{ data.ubicacion || '-' }}</span>

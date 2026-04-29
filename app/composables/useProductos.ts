@@ -11,6 +11,7 @@ export const useProductos = () => {
     sortOrder?: number
     soloActivos?: boolean
     categoriaId?: string | null
+    marcaId?: string | null
     ubicacion?: string | null
     maxStock?: number
   }) => {
@@ -21,7 +22,7 @@ export const useProductos = () => {
 
     let query = client
       .from('productos')
-      .select('*, categorias_productos(nombre)', { count: 'exact' })
+      .select('*, categorias_productos(nombre), marcas!marca_id(nombre)', { count: 'exact' })
 
     // Ordenamiento
     const sortField = opts?.sortField || 'nombre'
@@ -40,6 +41,10 @@ export const useProductos = () => {
 
     if (opts?.categoriaId) {
       query = query.eq('categoria_id', opts.categoriaId)
+    }
+
+    if (opts?.marcaId) {
+      query = query.eq('marca_id', opts.marcaId)
     }
 
     if (opts?.ubicacion) {
