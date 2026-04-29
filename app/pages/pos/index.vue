@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { User, Search, ShoppingCart, CreditCard, Banknote, Plus, Trash2, CheckCircle2, RotateCcw, X, Loader2 } from 'lucide-vue-next'
+import { User, Search, ShoppingCart, CreditCard, Banknote, Plus, Trash2, CheckCircle2, RotateCcw, X, Loader2, RefreshCw, Settings2 } from 'lucide-vue-next'
 import { useTasas } from '~/composables/useTasas'
 import { useMetodosPago } from '~/composables/useMetodosPago'
 import { useOfflineDb, db } from '~/composables/useOfflineDb'
 import { useNetworkStore } from '~/stores/network'
+import TasasForm from '~/components/configuracion/TasasForm.vue'
 
 const cart = useCartStore()
 const { perfil } = usePerfil() // INYECTAR PERFIL
@@ -29,6 +30,38 @@ const ventaOrigen = ref<any>(null)
 const corrigeVentaId = ref<string | null>(null)
 const cargandoOrigen = ref(false)
 const openingCheckout = ref(false)
+
+const isRatesDialogVisible = ref(false)
+const syncingBcv = ref(false)
+
+const refreshTasasData = async () => {
+  try {
+    if (networkStore.isOnline) {
+      tasas.value = await fetchTasas()
+    } else {
+      tasas.value = await db.tasas.toArray()
+    }
+  } catch (e) {
+    console.error('Error refrescando tasas:', e)
+  }
+}
+
+const handleQuickSyncBcv = async () => {
+  if (!networkStore.isOnline) {
+    toast.add({ severity: 'warn', summary: 'Offline', detail: 'La sincronización requiere conexión a internet.', life: 3000 })
+    return
+  }
+  syncingBcv.value = true
+  try {
+    await syncBcvRate()
+    await refreshTasasData()
+    toast.add({ severity: 'success', summary: 'Sincronizado', detail: 'Tasa BCV actualizada.', life: 2000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo sincronizar la tasa.', life: 3000 })
+  } finally {
+    syncingBcv.value = false
+  }
+}
 
 const cargarPrefillDesde = async (id: string) => {
   cargandoOrigen.value = true
@@ -471,7 +504,7 @@ const handleHistoryClick = () => {
 </script>
 
 <template>
-  <div class="p-4 md:p-6 bg-slate-50 min-h-screen flex flex-col gap-4">
+  <div class="bg-slate-50 h-full flex flex-col gap-4 overflow-hidden">
     <!-- Header de Acciones Rápidas -->
     <div class="hidden lg:flex items-center justify-end">
         <Button 
@@ -502,7 +535,7 @@ const handleHistoryClick = () => {
     </div>
 
     <div class="pos-grid flex-1 overflow-hidden relative">
-      <div class="lg:hidden flex mb-4 bg-slate-100 p-1 rounded-xl">
+      <div class="lg:hidden flex bg-slate-100 p-1 rounded-xl">
         <button 
           @click="activeTab = 'search'" 
           class="flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
@@ -620,7 +653,34 @@ const handleHistoryClick = () => {
                         <span class="text-sm font-bold text-slate-400 mb-1">USD</span>
                     </div>
                     <div class="mt-4 pt-4 border-t border-slate-200">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tasa de cambio operativa</p>
+                        <div class="flex items-center justify-between mb-3 px-1">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tasa de cambio operativa</p>
+                            <div class="flex gap-1">
+                                <Button 
+                                    v-tooltip.top="'Sincronizar BCV'"
+                                    @click="handleQuickSyncBcv" 
+                                    severity="secondary" 
+                                    variant="text" 
+                                    rounded 
+                                    size="small"
+                                    :loading="syncingBcv"
+                                    class="!p-1 h-7 w-7"
+                                >
+                                    <RefreshCw class="w-3.5 h-3.5" :class="{'animate-spin': syncingBcv}" />
+                                </Button>
+                                <Button 
+                                    v-tooltip.top="'Configurar Tasas'"
+                                    @click="isRatesDialogVisible = true" 
+                                    severity="secondary" 
+                                    variant="text" 
+                                    rounded 
+                                    size="small"
+                                    class="!p-1 h-7 w-7"
+                                >
+                                    <Settings2 class="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                        </div>
                         <SelectButton v-model="selectedTasaCodigo" :options="['BCV', 'PARALELO']" class="w-full" />
                         <div class="flex justify-between items-center mt-3 px-1">
                             <span class="text-xs font-bold text-slate-500">Valor Tasa:</span>
@@ -729,6 +789,17 @@ const handleHistoryClick = () => {
                 <Button @click="finalizarVenta" :disabled="!canFinish || procesando" :loading="procesando" class="h-14 font-black text-lg" :severity="canFinish ? 'success' : 'secondary'" label="PROCESAR FACTURA" />
             </div>
         </div>
+    </Dialog>
+
+    <!-- Dialogo para Gestionar Tasas desde el POS -->
+    <Dialog 
+        v-model:visible="isRatesDialogVisible" 
+        header="Gestión de Tasas de Cambio" 
+        modal 
+        class="w-full max-w-3xl"
+        :dismissableMask="true"
+    >
+        <TasasForm @updated="refreshTasasData" />
     </Dialog>
   </div>
 </template>

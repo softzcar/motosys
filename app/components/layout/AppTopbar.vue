@@ -22,18 +22,18 @@ const handleLogout = () => {
       severity: 'danger'
     },
     accept: async () => {
-      // Si estamos offline, salimos instantáneamente y limpiamos rastro local
+      // Limpieza de rastro local SIEMPRE (crítico para que el middleware no restaure sesión)
+      const { db } = await import('~/composables/useOfflineDb')
+      await db.perfil.clear()
+
       if (!networkStore.isOnline) {
-        const { db } = await import('~/composables/useOfflineDb')
-        await db.perfil.clear()
-        return navigateTo('/login') // Navegación interna segura
+        return navigateTo('/login')
       }
 
       try {
         await logout()
       } catch (e) {
-        const { db } = await import('~/composables/useOfflineDb')
-        await db.perfil.clear()
+        console.error('Error cerrando sesión online:', e)
         return navigateTo('/login')
       }
     }
