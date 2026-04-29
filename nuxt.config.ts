@@ -89,6 +89,8 @@ export default defineNuxtConfig({
   pwa: {
     strategies: 'generateSW',
     registerType: 'autoUpdate',
+    injectRegister: 'auto',
+    includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
     manifest: {
       id: '/?standalone=true',
       name: 'motosys',
@@ -112,8 +114,9 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: '/',
-      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2,json}'],
       cleanupOutdatedCaches: true,
+      navigateFallbackDenylist: [/^\/api\//, /^\/auth\//, /^\/_supabase\//],
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
@@ -121,19 +124,20 @@ export default defineNuxtConfig({
           options: { 
             cacheName: 'api-cache', 
             expiration: { maxEntries: 100, maxAgeSeconds: 3600 },
-            networkTimeoutSeconds: 5
-          }
-        },
-        {
-          urlPattern: ({ request }) => request.mode === 'navigate',
-          handler: 'NetworkFirst',
-          options: { 
-            cacheName: 'pages-cache',
             networkTimeoutSeconds: 3
           }
         },
         {
-          urlPattern: ({ url }) => url.pathname.includes('/_nuxt/') || url.pathname.includes('.js') || url.pathname.includes('.css'),
+          urlPattern: ({ request }) => request.mode === 'navigate' || request.destination === 'document',
+          handler: 'NetworkFirst',
+          options: { 
+            cacheName: 'pages-cache',
+            networkTimeoutSeconds: 3,
+            cacheableResponse: { statuses: [0, 200] }
+          }
+        },
+        {
+          urlPattern: ({ url }) => url.pathname.includes('/_nuxt/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css'),
           handler: 'StaleWhileRevalidate',
           options: { 
             cacheName: 'static-resources',
@@ -146,7 +150,10 @@ export default defineNuxtConfig({
         {
           urlPattern: ({ request }) => request.destination === 'image' || request.destination === 'font',
           handler: 'CacheFirst',
-          options: { cacheName: 'assets-cache' }
+          options: { 
+            cacheName: 'assets-cache',
+            expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 }
+          }
         }
       ]
     },
