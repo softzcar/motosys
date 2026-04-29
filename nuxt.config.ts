@@ -87,8 +87,10 @@ export default defineNuxtConfig({
 
   // @ts-ignore
   pwa: {
+    strategies: 'generateSW',
     registerType: 'autoUpdate',
     manifest: {
+      id: '/?standalone=true',
       name: 'motosys',
       short_name: 'motosys',
       description: 'Sistema de Gestión motosys',
@@ -119,22 +121,25 @@ export default defineNuxtConfig({
           options: { 
             cacheName: 'api-cache', 
             expiration: { maxEntries: 100, maxAgeSeconds: 3600 },
-            networkTimeoutSeconds: 5 // Si el internet está lento, salta a caché rápido
+            networkTimeoutSeconds: 5
           }
         },
         {
-          urlPattern: ({ request }) => request.destination === 'document' || request.mode === 'navigate',
+          urlPattern: ({ request }) => request.mode === 'navigate',
           handler: 'NetworkFirst',
-          options: { cacheName: 'pages-cache' }
+          options: { 
+            cacheName: 'pages-cache',
+            networkTimeoutSeconds: 3
+          }
         },
         {
           urlPattern: ({ url }) => url.pathname.includes('/_nuxt/') || url.pathname.includes('.js') || url.pathname.includes('.css'),
-          handler: 'CacheFirst',
+          handler: 'StaleWhileRevalidate',
           options: { 
             cacheName: 'static-resources',
             expiration: {
               maxEntries: 500,
-              maxAgeSeconds: 60 * 60 * 24 * 30 // 30 días
+              maxAgeSeconds: 60 * 60 * 24 * 30
             }
           }
         },
@@ -150,7 +155,7 @@ export default defineNuxtConfig({
       periodicSyncForUpdates: 3600
     },
     devOptions: {
-      enabled: true,
+      enabled: false,
       type: 'module'
     }
   }
