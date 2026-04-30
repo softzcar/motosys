@@ -12,6 +12,7 @@ const toast = useToast()
 const { fetchVentas, fetchVentaById, fetchVendedoresConVentas, anularVenta } = useVentas()
 const { fetchProductos } = useProductos()
 const { fetchAllCategorias } = useCategoriasProductos()
+const { fetchAllMarcas } = useMarcas()
 const { fetchCompras, getCompraById } = useCompras()
 const { fetchCierres, fetchCierreById } = useCierresCaja()
 const { isAdmin } = usePerfil()
@@ -69,6 +70,7 @@ const sortOrderInventario = ref(1)
 const searchProducto = ref('')
 const categoriaId = ref<string | null>(null)
 const categorias = ref<any[]>([])
+const marcas = ref<any[]>([])
 const inventarioStats = ref({ totalValor: 0, itemsBajoStock: 0 })
 
 // Estado de Compras
@@ -105,6 +107,57 @@ const searchAuditoria = ref('')
 
 const auditoriaDetailModal = ref(false)
 const selectedAuditoria = ref<any>(null)
+
+const formatValue = (key: string, value: any) => {
+  if (value === null || value === undefined) return 'N/A'
+  if (key === 'activo') return value ? 'Activo' : 'Inactivo'
+  if (key === 'categoria_id') {
+    return categorias.value.find(c => c.id === value)?.nombre || 'Sin categoría'
+  }
+  if (key === 'marca_id') {
+    return marcas.value.find(m => m.id === value)?.nombre || 'Sin marca'
+  }
+  if (key === 'precio_venta') {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
+  }
+  return value
+}
+
+const auditoriaChanges = computed(() => {
+  if (!selectedAuditoria.value || !selectedAuditoria.value.valor_anterior) return []
+  
+  const before = selectedAuditoria.value.valor_anterior
+  const after = selectedAuditoria.value.valor_nuevo || {}
+  const changes: any[] = []
+
+  const fields = [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'codigo_parte', label: 'Código' },
+    { key: 'stock', label: 'Stock' },
+    { key: 'precio_venta', label: 'Precio' },
+    { key: 'ubicacion', label: 'Ubicación' },
+    { key: 'categoria_id', label: 'Categoría' },
+    { key: 'marca_id', label: 'Marca' },
+    { key: 'activo', label: 'Estado' }
+  ]
+
+  fields.forEach(field => {
+    const vBefore = before[field.key]
+    const vAfter = after[field.key]
+
+    // Solo mostrar si el valor cambió. 
+    // Usamos abstract equality para tipos que vienen de JSON
+    if (vBefore != vAfter && vAfter !== undefined) {
+      changes.push({
+        label: field.label,
+        before: formatValue(field.key, vBefore),
+        after: formatValue(field.key, vAfter)
+      })
+    }
+  })
+
+  return changes
+})
 
 // Estado de Clientes (Reporte por Cliente)
 const ventasCliente = ref<any[]>([])
@@ -320,7 +373,12 @@ const loadAuditoria = async () => {
 }
 
 const loadCategorias = async () => {
-  categorias.value = await fetchAllCategorias()
+  const [catData, marcaData] = await Promise.all([
+    fetchAllCategorias(),
+    fetchAllMarcas()
+  ])
+  categorias.value = catData
+  marcas.value = marcaData
 }
 
 // --- HANDLERS ---
@@ -1011,15 +1069,57 @@ const getCleanContadoUsd = (cierre: any) => {
      <Dialog v-model:visible="auditoriaDetailModal" :style="{ width: '600px' }" modal header="Detalle de Auditoría">
         <div v-if="selectedAuditoria" class="space-y-4 pt-2">
            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p class="text-xs font-bold text-slate-400 uppercase mb-2">Producto Afectado</p>
-              <div class="flex justify-between items-center">
-                 <span class="font-black text-slate-800">{{ selectedAuditoria.nombre }}</span>
-                 <span class="text-xs px-2 py-0.5 bg-slate-200 rounded font-bold">{{ selectedAuditoria.codigo_parte }}</span>
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <p class="text-xs font-bold text-slate-400 uppercase mb-1">Producto Afectado</p>
+                  <span class="font-black text-slate-800">{{ selectedAuditoria.nombre }}</span>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs font-bold text-slate-400 uppercase mb-1">Acción</p>
+                  <Tag :severity="selectedAuditoria.accion === 'DELETE' ? 'danger' : 'info'" :value="selectedAuditoria.accion" />
+                </div>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                 <span class="text-xs px-2 py-0.5 bg-slate-200 rounded font-bold text-slate-600">{{ selectedAuditoria.codigo_parte }}</span>
+                 <span class="text-[10px] text-slate-400 font-medium">{{ new Date(selectedAuditoria.created_at).toLocaleString() }}</span>
               </div>
            </div>
-           <div class="p-3 bg-white rounded-lg border border-slate-200">
-              <p class="text-xs font-bold text-slate-400 uppercase mb-1">Motivo Registrado</p>
-              <p class="text-sm text-slate-700 italic">"{{ selectedAuditoria.motivo }}"</p>
+
+           <!-- Cambios Detectados -->
+           <div v-if="auditoriaChanges.length > 0" class="space-y-2">
+              <p class="text-xs font-bold text-slate-500 uppercase px-1">Cambios Realizados</p>
+              <div class="grid grid-cols-1 gap-2">
+                 <div v-for="change in auditoriaChanges" :key="change.label" 
+                    class="flex flex-col p-2 bg-white border border-slate-100 rounded-lg shadow-sm">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">{{ change.label }}</span>
+                    <div class="flex items-center gap-3 mt-1">
+                       <span class="text-sm text-red-500 line-through decoration-red-300 opacity-70">{{ change.before }}</span>
+                       <TrendingUp class="w-3 h-3 text-slate-300" />
+                       <span class="text-sm text-emerald-600 font-bold">{{ change.after }}</span>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div v-if="selectedAuditoria.accion === 'DELETE'" class="p-4 bg-red-50 border border-red-100 rounded-lg">
+              <p class="text-xs font-bold text-red-400 uppercase mb-2">Estado Anterior a Eliminación</p>
+              <div class="grid grid-cols-2 gap-y-2 text-sm">
+                 <div v-for="(val, key) in selectedAuditoria.valor_anterior" :key="key" class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold">{{ key.replace('_',' ') }}</span>
+                    <span class="text-slate-700 font-medium">{{ formatValue(key, val) }}</span>
+                 </div>
+              </div>
+           </div>
+
+           <div class="p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <p class="text-xs font-bold text-amber-500 uppercase mb-1">Motivo Registrado</p>
+              <p class="text-sm text-amber-900 italic font-medium">"{{ selectedAuditoria.motivo }}"</p>
+              <div class="mt-2 pt-2 border-t border-amber-100 flex items-center gap-2">
+                 <div class="w-6 h-6 rounded-full bg-amber-200 flex items-center justify-center text-[10px] font-bold text-amber-700">
+                    {{ selectedAuditoria.usuario?.nombre?.substring(0,2).toUpperCase() || 'AD' }}
+                 </div>
+                 <span class="text-xs font-bold text-amber-700">{{ selectedAuditoria.usuario?.nombre || 'Administrador' }}</span>
+              </div>
            </div>
         </div>
         <template #footer>

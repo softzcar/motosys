@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, Barcode, LayoutGrid, X } from 'lucide-vue-next'
+import { Search as SearchIcon, Barcode, LayoutGrid, Tag as TagIcon, X } from 'lucide-vue-next'
 import { useDebounceFn } from '@vueuse/core'
 import { useOfflineDb, db } from '~/composables/useOfflineDb'
 import type { Producto } from '~/types/database'
@@ -14,6 +14,7 @@ const resultados = ref<Producto[]>([])
 const loading = ref(false)
 const searchInput = ref<any>(null)
 const showCategories = ref(false)
+const showBrands = ref(false)
 
 const buscar = useDebounceFn(async () => {
   if (!search.value || search.value.length < 2) {
@@ -79,7 +80,7 @@ useBarcodeScanner(async (code) => {
   }
 })
 
-// Shortcut F2 para buscar y F4 para categorías
+// Shortcut F2 para buscar, F4 para categorías y F5 para marcas
 const handleGlobalKey = (e: KeyboardEvent) => {
   // Solo si no hay un modal abierto (para evitar conflictos)
   if (e.key === 'F2') {
@@ -89,6 +90,10 @@ const handleGlobalKey = (e: KeyboardEvent) => {
   if (e.key === 'F4') {
     e.preventDefault()
     showCategories.value = !showCategories.value
+  }
+  if (e.key === 'F5') {
+    e.preventDefault()
+    showBrands.value = !showBrands.value
   }
 }
 
@@ -107,6 +112,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
         <div class="flex gap-1.5">
           <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-tighter">F2: Buscar</span>
           <span class="text-[9px] font-bold text-blue-400 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter">F4: Categorías</span>
+          <span class="text-[9px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 uppercase tracking-tighter">F5: Marcas</span>
         </div>
       </div>
       
@@ -122,15 +128,26 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
           />
         </IconField>
         
-        <Button 
-          severity="secondary" 
-          outlined 
-          class="aspect-square" 
-          title="Explorar por Categorías"
-          @click="showCategories = true"
-        >
-          <LayoutGrid :size="20" />
-        </Button>
+        <div class="flex gap-1">
+          <Button 
+            severity="info" 
+            outlined 
+            class="aspect-square" 
+            title="Categorías (F4)"
+            @click="showCategories = true"
+          >
+            <LayoutGrid :size="20" />
+          </Button>
+          <Button 
+            severity="warn" 
+            outlined 
+            class="aspect-square" 
+            title="Marcas (F5)"
+            @click="showBrands = true"
+          >
+            <TagIcon :size="20" />
+          </Button>
+        </div>
       </div>
     </div>
 
@@ -162,12 +179,12 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
       </div>
 
       <div v-else-if="search.length >= 2" class="text-center py-12 text-slate-400">
-        <Search :size="32" class="mx-auto mb-2 opacity-50" />
+        <SearchIcon :size="32" class="mx-auto mb-2 opacity-50" />
         <p class="text-sm">Sin resultados</p>
       </div>
 
       <div v-else class="text-center py-12 text-slate-400">
-        <Search :size="32" class="mx-auto mb-2 opacity-50" />
+        <SearchIcon :size="32" class="mx-auto mb-2 opacity-50" />
         <p class="text-sm">Escanea un código o escribe para buscar</p>
       </div>
     </div>
@@ -175,6 +192,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
     <!-- Selector de Categorías -->
     <PosCategorySelector 
       v-model:visible="showCategories" 
+    />
+    <!-- Selector de Marcas -->
+    <PosBrandSelector 
+      v-model:visible="showBrands" 
     />
   </div>
 </template>

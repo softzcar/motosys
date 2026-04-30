@@ -628,7 +628,7 @@ const handleHistoryClick = () => {
       <template #footer>
         <div class="flex justify-end gap-2 mt-4 w-full">
           <button @click="resetCliente" type="button" tabindex="5" class="mr-auto px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center gap-2 font-bold text-xs uppercase">
-            <RotateCcw :size="14" /> Limpiar / Nuevo
+            <RotateCcw :size="14" /> Limpiar
           </button>
           <button @click="isClientDialogVisible = false" tabindex="6" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition text-sm">Volver</button>
           <button 
@@ -637,7 +637,7 @@ const handleHistoryClick = () => {
             tabindex="4"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-bold shadow-md"
           >
-            Continuar a Pago
+            Pagar
           </button>
         </div>
       </template>
