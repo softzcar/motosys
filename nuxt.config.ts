@@ -100,7 +100,7 @@ export default defineNuxtConfig({
       background_color: '#0f172a',
       display: 'standalone',
       orientation: 'portrait',
-      start_url: '/?mode=pwa',
+      start_url: '/',
       scope: '/',
       icons: [
         { src: 'android-icon-36x36.png', sizes: '36x36', type: 'image/png' },
