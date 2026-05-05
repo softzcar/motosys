@@ -25,7 +25,8 @@ const empresa = ref({
   whatsapp: '',
   instagram: '',
   sitio_web: '',
-  iva: 16
+  iva: 16,
+  solo_pwa: false
 })
 
 const fetchEmpresa = async () => {
@@ -54,6 +55,7 @@ const saveEmpresa = async () => {
         instagram: empresa.value.instagram,
         sitio_web: empresa.value.sitio_web,
         iva: empresa.value.iva,
+        solo_pwa: empresa.value.solo_pwa,
         updated_at: new Date()
       })
       .eq('id', empresa.value.id)
@@ -296,6 +298,16 @@ onMounted(() => {
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700">IVA (%)</label>
                     <InputNumber v-model="empresa.iva" mode="decimal" :minFractionDigits="1" :maxFractionDigits="2" suffix="%" placeholder="Ej: 16" @focus="$event => ($event.target as HTMLInputElement).select()" />
+                  </div>
+
+                  <div class="md:col-span-2 mt-2">
+                    <div class="flex items-start gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                      <ToggleSwitch v-model="empresa.solo_pwa" inputId="solo_pwa" class="mt-1" />
+                      <label for="solo_pwa" class="flex flex-col cursor-pointer">
+                        <span class="font-bold text-blue-900">Restringir acceso solo a App (PWA)</span>
+                        <span class="text-xs text-blue-700 leading-tight">Si se activa, los usuarios que entren desde un navegador normal solo verán el logo. Deben instalar la aplicación para usar el sistema.</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
