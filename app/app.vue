@@ -44,12 +44,24 @@ const checkStandalone = () => {
 
 const fetchConfig = async () => {
   try {
-    const { data } = await supabase.from('empresa').select('solo_pwa').limit(1).single()
-    if (data) soloPwaConfig.value = data.solo_pwa
+    console.log('[PWA] Iniciando fetch de configuración...')
+    const { data, error } = await supabase.from('empresa').select('solo_pwa').limit(1).single()
+    
+    if (error) {
+      console.error('[PWA] ❌ Error Supabase:', error.message, error)
+    } else {
+      console.log('[PWA] ✅ Datos recibidos de BD:', data)
+      soloPwaConfig.value = !!data?.solo_pwa
+    }
   } catch (e) {
-    console.error('Error fetching PWA config:', e)
+    console.error('[PWA] ❌ Error crítico fetchConfig:', e)
   } finally {
     loadingConfig.value = false
+    console.log('[PWA] Estado final:', { 
+      soloPwaConfig: soloPwaConfig.value, 
+      isStandalone: isStandalone.value, 
+      showSplash: soloPwaConfig.value && !isStandalone.value 
+    })
   }
 }
 
