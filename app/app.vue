@@ -15,14 +15,30 @@ const checkStandalone = () => {
   if (import.meta.client && typeof window !== 'undefined') {
     // 1. Media Query (Estándar)
     const mqStandalone = window.matchMedia('(display-mode: standalone)').matches
-    // 2. Navigator standalone (iOS)
-    const navStandalone = (window.navigator as any).standalone
-    // 3. Parámetro en URL (Nuestro trigger en nuxt.config)
-    const urlStandalone = window.location.search.includes('mode=pwa')
+    const mqMinimalUi = window.matchMedia('(display-mode: minimal-ui)').matches
     
-    isStandalone.value = mqStandalone || navStandalone || urlStandalone
+    // 2. Parámetro en URL (Nuestro trigger en nuxt.config)
+    const urlStandalone = window.location.search.includes('mode=pwa') || window.location.search.includes('standalone=true')
+    
+    // 3. Detección por dimensiones (PC)
+    // En una PWA instalada en PC, no hay barra de direcciones ni de marcadores.
+    // La diferencia entre la ventana exterior e interior suele ser muy pequeña (< 100px).
+    const isPwaHeight = (window.outerHeight - window.innerHeight) < 100 && (window.outerHeight - window.innerHeight) > 0
 
-    console.log('[PWA Check]', { mqStandalone, navStandalone, urlStandalone, final: isStandalone.value })
+    // 4. Bypass para desarrollo (Localhost)
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    
+    isStandalone.value = mqStandalone || mqMinimalUi || urlStandalone || isPwaHeight || isLocal
+
+    console.log('[PWA Debug]', { 
+      mqStandalone, 
+      mqMinimalUi, 
+      urlStandalone, 
+      isPwaHeight, 
+      isLocal,
+      url: window.location.href,
+      final: isStandalone.value 
+    })
   }
 }
 
