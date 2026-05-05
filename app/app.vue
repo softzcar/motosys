@@ -10,13 +10,19 @@ const isStandalone = ref(false)
 const soloPwaConfig = ref(false)
 const loadingConfig = ref(true)
 
-// Detección de modo Standalone
+// Detección de modo Standalone mejorada
 const checkStandalone = () => {
   if (import.meta.client && typeof window !== 'undefined') {
-    isStandalone.value = window.matchMedia('(display-mode: standalone)').matches 
-                         || (window.navigator as any).standalone 
-                         || document.referrer.includes('android-app://')
-                         || window.location.search.includes('mode=pwa')
+    // 1. Media Query (Estándar)
+    const mqStandalone = window.matchMedia('(display-mode: standalone)').matches
+    // 2. Navigator standalone (iOS)
+    const navStandalone = (window.navigator as any).standalone
+    // 3. Parámetro en URL (Nuestro trigger en nuxt.config)
+    const urlStandalone = window.location.search.includes('mode=pwa')
+    
+    isStandalone.value = mqStandalone || navStandalone || urlStandalone
+
+    console.log('[PWA Check]', { mqStandalone, navStandalone, urlStandalone, final: isStandalone.value })
   }
 }
 
@@ -36,6 +42,8 @@ const fetchConfig = async () => {
 // 2. NO estamos en modo standalone
 // 3. Ya terminó de cargar la configuración
 const showSplash = computed(() => {
+  // Si estamos en localhost y no queremos splash para desarrollo, podríamos añadir un bypass
+  // Pero para el usuario seguiremos su regla:
   return soloPwaConfig.value && !isStandalone.value && !loadingConfig.value
 })
 
@@ -43,6 +51,13 @@ const showSplash = computed(() => {
 onMounted(async () => {
   checkStandalone()
   fetchConfig()
+
+  // Escuchar cambios en el modo de pantalla (por si se instala sin recargar)
+  if (import.meta.client && typeof window !== 'undefined') {
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+      isStandalone.value = e.matches
+    })
+  }
 
   if (import.meta.client && typeof navigator !== 'undefined') {
     // 1. Limpieza de datos antiguos sincronizados
@@ -65,19 +80,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="showSplash" class="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
-    <div class="mb-8 animate-pulse">
-      <!-- Logo placeholder o imagen real si existe -->
-      <div class="w-24 h-24 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/20 mb-4">
-        <span class="text-white text-4xl font-black italic">M</span>
-      </div>
-      <h1 class="text-4xl font-black text-white tracking-tighter uppercase italic">motosys</h1>
-      <div class="h-1 w-12 bg-blue-500 mx-auto mt-2 rounded-full"></div>
+  <div v-if="showSplash" class="fixed inset-0 bg-white flex flex-col items-center justify-center p-6 text-center z-[9999]">
+    <div class="flex flex-col items-center gap-4">
+      <img src="/android-icon-192x192.png" alt="motosys logo" class="w-32 h-32 rounded-3xl shadow-xl shadow-slate-200" />
+      <h1 class="text-4xl font-black text-slate-800 tracking-tighter uppercase italic">motosys</h1>
     </div>
-    
-    <p class="text-slate-400 text-sm font-medium max-w-xs leading-relaxed">
-      Para acceder al sistema, por favor instale la aplicación desde su navegador.
-    </p>
   </div>
 
   <NuxtLayout v-else>
