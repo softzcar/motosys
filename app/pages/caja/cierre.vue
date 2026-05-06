@@ -176,7 +176,7 @@ onMounted(loadPreview)
                   <div class="text-[10px] text-slate-400">{{ formatCurrency(Number(f.monto_sistema_usd)) }}</div>
                 </td>
                 <td class="p-3 text-right w-48">
-                  <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full" @focus="$event => ($event.target as HTMLInputElement).select()" />                  <div class="text-[10px] text-slate-400 mt-1">{{ formatCurrency(f.contadoUsd) }}</div>
+                  <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full" locale="en-US" @focus="$event => ($event.target as HTMLInputElement).select()" />                  <div class="text-[10px] text-slate-400 mt-1">{{ formatCurrency(f.contadoUsd) }}</div>
                 </td>
                 <td class="p-3 text-right">
                   <span class="text-xs font-bold text-slate-500">{{ f.tasa.toLocaleString() }}</span>
@@ -230,7 +230,7 @@ onMounted(loadPreview)
 
             <div>
               <label class="text-[10px] font-black text-blue-600 uppercase block mb-1.5">Monto Contado en {{ f.moneda }}</label>
-              <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full h-12 text-lg" @focus="$event => ($event.target as HTMLInputElement).select()" />              <div class="flex justify-between items-center mt-2 px-1">
+              <InputNumber v-model="contados[f.metodo_pago_id]" mode="decimal" :minFractionDigits="2" class="w-full h-12 text-lg" locale="en-US" @focus="$event => ($event.target as HTMLInputElement).select()" />              <div class="flex justify-between items-center mt-2 px-1">
                 <span class="text-[10px] font-bold text-slate-400 uppercase">Equivalente:</span>
                 <span class="text-xs font-black text-slate-600">{{ formatCurrency(f.contadoUsd) }}</span>
               </div>

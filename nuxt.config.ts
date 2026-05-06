@@ -40,6 +40,10 @@ export default defineNuxtConfig({
   primevue: {
     options: {
       ripple: true,
+      locale: {
+        decimalSeparator: '.',
+        thousandsSeparator: ',',
+      },
       theme: {
         preset: Lara,
         options: {

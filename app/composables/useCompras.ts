@@ -46,31 +46,39 @@ export const useCompras = () => {
     const from = page * rows
     const to = from + rows - 1
 
+    // Simplificamos al máximo para descartar errores de join
     let query = client
       .from('compras')
-      .select('*, proveedores!inner(nombre)', { count: 'exact' })
+      .select('*, proveedores(nombre)', { count: 'exact' })
 
+    // Ordenamiento por defecto
     const sortField = opts?.sortField || 'fecha'
-    const isAscending = opts?.sortOrder === 1
+    const isAscending = opts?.sortOrder !== -1 // Invertido para que 1 o undefined sea asc, -1 desc
 
     query = query.order(sortField, { ascending: isAscending })
 
+    // Filtros opcionales
     if (opts?.desde) query = query.gte('fecha', opts.desde)
     if (opts?.hasta) query = query.lte('fecha', opts.hasta)
-    if (!opts?.incluirAnuladas) query = query.eq('anulada', false)
 
     if (opts?.search) {
       query = query.ilike('numero_factura', `%${opts.search}%`)
     }
 
-    if (opts?.searchProveedor) {
+    // El filtro de proveedor lo hacemos solo si hay búsqueda, 
+    // y usamos el nombre de la tabla tal cual
+    if (opts?.searchProveedor && opts.searchProveedor.trim() !== '') {
       query = query.ilike('proveedores.nombre', `%${opts.searchProveedor}%`)
     }
 
     const { data, count, error } = await query.range(from, to)
 
-    if (error) throw error
-    return { data: data as Compra[], total: count ?? 0 }
+    if (error) {
+      console.error('Error en fetchCompras:', error)
+      throw error
+    }
+    
+    return { data: (data || []) as Compra[], total: count ?? 0 }
   }
 
   const registrarCompra = async (

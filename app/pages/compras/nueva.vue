@@ -4,10 +4,11 @@ import { useProductos } from '~/composables/useProductos'
 import { useCompras, type DetalleCompra } from '~/composables/useCompras'
 import { useToast } from 'primevue/usetoast'
 import ProductoForm from '~/components/inventario/ProductoForm.vue'
-import { Plus, ArrowLeft, Save, Trash2, ShoppingBag, PackageSearch, Package, RotateCcw } from 'lucide-vue-next'
+import { useBarcodeScanner } from '~/composables/useBarcodeScanner'
+import { Plus, ArrowLeft, Save, Trash2, ShoppingBag, PackageSearch, Package, RotateCcw, XCircle, CheckCircle2, Tag } from 'lucide-vue-next'
 
 const { fetchProveedores, crearProveedor } = useProveedores()
-const { fetchProductos, createProducto, friendlyError } = useProductos()
+const { fetchProductos, createProducto, getProductoByCodigo, friendlyError } = useProductos()
 const { registrarCompra, getCompraById } = useCompras()
 const supabase = useSupabaseClient()
 const toast = useToast()
@@ -37,11 +38,58 @@ const isIvaManual = ref(false)
 
 const cart = ref<(DetalleCompra & { nombre: string, codigo_parte: string })[]>([])
 const selectedProducto = ref<any>(null)
+const confirmedProducto = ref<any>(null)
 const itemCantidad = ref(1)
 const itemCosto = ref(0)
 
+// Watcher para confirmar selección y limpiar buscador
+watch(selectedProducto, (newVal) => {
+  if (newVal && typeof newVal === 'object' && newVal.id) {
+    confirmedProducto.value = newVal
+    nextTick(() => {
+      selectedProducto.value = null
+    })
+  }
+})
+
+// Watcher para limpiar campos al deseleccionar producto
+watch(confirmedProducto, (newVal) => {
+  if (!newVal) {
+    itemCantidad.value = 1
+    itemCosto.value = 0
+  }
+})
+
 const productoDialog = ref(false)
 const savingProducto = ref(false)
+
+// Manejo de escaneo de código de barras
+const handleScan = async (code: string) => {
+  console.log('Código escaneado:', code)
+  loadingProductos.value = true
+  try {
+    const prod = await getProductoByCodigo(code)
+    if (prod) {
+      confirmedProducto.value = prod
+      toast.add({ severity: 'success', summary: 'Producto detectado', detail: prod.nombre, life: 2000 })
+    } else {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Producto no encontrado', 
+        detail: `El código ${code} no existe. Crea el producto nuevo.`, 
+        life: 3000 
+      })
+      productoDialog.value = true
+    }
+  } catch (err) {
+    console.error('Error buscando producto escaneado:', err)
+  } finally {
+    loadingProductos.value = false
+  }
+}
+
+// Inicializar el escuchador de código de barras
+useBarcodeScanner(handleScan)
 
 const proveedorModal = ref(false)
 const nuevoProveedor = ref({ nombre: '', telefono: '', direccion: '' })
@@ -78,7 +126,7 @@ const onProductoSubmit = async (data: { values: any }) => {
     const nuevo = await createProducto(data.values)
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Producto creado exitosamente', life: 3000 })
     productoDialog.value = false
-    selectedProducto.value = nuevo
+    confirmedProducto.value = nuevo
   } catch (err: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: friendlyError(err), life: 3000 })
   } finally {
@@ -107,19 +155,19 @@ const searchProductos = async (event: any) => {
 }
 
 const addItem = () => {
-  if (!selectedProducto.value || itemCantidad.value <= 0) return
+  if (!confirmedProducto.value || itemCantidad.value <= 0) return
 
   const subtotal = itemCantidad.value * itemCosto.value
   cart.value.push({
-    id_producto: selectedProducto.value.id,
-    nombre: selectedProducto.value.nombre,
-    codigo_parte: selectedProducto.value.codigo_parte,
+    id_producto: confirmedProducto.value.id,
+    nombre: confirmedProducto.value.nombre,
+    codigo_parte: confirmedProducto.value.codigo_parte,
     cantidad: itemCantidad.value,
     costo_unitario: itemCosto.value,
     subtotal
   })
 
-  selectedProducto.value = null
+  confirmedProducto.value = null
   itemCantidad.value = 1
   itemCosto.value = 0
   calculateTotal()
@@ -417,29 +465,56 @@ const formatCurrency = (value: number) => {
                     placeholder="Busca por nombre o código de parte..."
                     forceSelection
                     class="flex-1"
+                    data-barcode-input="true"
                   />
                   <Button severity="secondary" outlined @click="productoDialog = true" class="border-slate-200">
                     <Plus class="w-4 h-4" />
                   </Button>
                </InputGroup>
+               
+               <!-- Tag de producto seleccionado -->
+               <div v-if="confirmedProducto" class="mt-2 flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-100 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
+                  <div class="p-1 bg-emerald-100 rounded">
+                    <Tag class="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <div class="flex-1 overflow-hidden">
+                    <p class="text-[11px] font-black text-emerald-800 leading-none truncate uppercase tracking-tight">
+                      {{ confirmedProducto.nombre }}
+                    </p>
+                    <p class="text-[9px] text-emerald-600 font-bold mt-0.5">
+                      SKU: {{ confirmedProducto.codigo_parte }}
+                    </p>
+                  </div>
+                  <Button 
+                    icon="pi pi-times" 
+                    severity="secondary" 
+                    text 
+                    rounded 
+                    size="small" 
+                    @click="confirmedProducto = null" 
+                    class="!p-1 h-6 w-6"
+                  >
+                    <XCircle class="w-3.5 h-3.5 text-emerald-400" />
+                  </Button>
+               </div>
             </div>
 
             <!-- Fila 2: Cantidad, Costo y Botón -->
             <div class="flex flex-col sm:flex-row gap-4 items-end">
                <div class="flex-1 w-full sm:w-auto">
                  <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Cantidad</label>
-                 <InputNumber v-model="itemCantidad" :min="1" class="w-full" @focus="$event => ($event.target as HTMLInputElement).select()" />
+                 <InputNumber v-model="itemCantidad" :min="1" class="w-full" :disabled="!confirmedProducto" @focus="$event => ($event.target as HTMLInputElement).select()" />
                </div>
                <div class="flex-1 w-full sm:w-auto">
                  <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Costo Unitario ($)</label>
-                 <InputNumber v-model="itemCosto" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" @focus="$event => ($event.target as HTMLInputElement).select()" />
+                 <InputNumber v-model="itemCosto" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" :disabled="!confirmedProducto" @focus="$event => ($event.target as HTMLInputElement).select()" />
                </div>
                <div class="w-full sm:w-auto">
                  <Button 
                    label="Agregar" 
                    severity="success" 
                    @click="addItem" 
-                   :disabled="!selectedProducto" 
+                   :disabled="!confirmedProducto" 
                    class="w-full px-8 h-[42px] font-bold" 
                  >
                    <template #icon>
@@ -515,7 +590,7 @@ const formatCurrency = (value: number) => {
     <!-- Modals -->
     <Dialog v-model:visible="productoDialog" header="Crear Nuevo Producto" :modal="true" :style="{ width: '500px' }" class="p-fluid">
       <div class="mt-4">
-        <ProductoForm @submit="onProductoSubmit" @cancel="productoDialog = false" :loading="savingProducto" />
+        <ProductoForm @submit="onProductoSubmit" @cancel="productoDialog = false" :loading="savingProducto" hide-stock />
       </div>
     </Dialog>
 

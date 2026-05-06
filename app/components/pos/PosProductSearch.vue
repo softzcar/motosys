@@ -71,7 +71,12 @@ useBarcodeScanner(async (code) => {
       producto = await db.productos.where('codigo_parte').equals(code).first()
     }
     
-    if (producto) addToCart(producto)
+    if (producto) {
+      addToCart(producto)
+      // Limpiar búsqueda si el usuario estaba escribiendo algo
+      search.value = ''
+      resultados.value = []
+    }
     else toast.add({ severity: 'warn', summary: 'No encontrado', detail: `Código: ${code}`, life: 3000 })
     
   } catch (e) {

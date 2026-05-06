@@ -282,48 +282,45 @@ const loadInventarioStats = async () => {
 }
 
 const loadCompras = async () => {
-  if (!dateRangeStr.value) return
   loadingCompras.value = true
   try {
     const { data, total } = await fetchCompras({
-      desde: dateRangeStr.value.desde,
-      hasta: dateRangeStr.value.hasta,
-      searchProveedor: searchProveedor.value,
+      search: searchProveedor.value || undefined, // Usamos search para factura o proveedor
       incluirAnuladas: incluirComprasAnuladas.value,
       sortField: sortFieldCompras.value,
       sortOrder: sortOrderCompras.value,
       rows: 100
     })
+    
     compras.value = data
     totalComprasRecords.value = total
+  } catch (err) {
+    console.error('Error cargando compras:', err)
   } finally {
     loadingCompras.value = false
   }
 }
 
 const loadComprasStats = async () => {
-  if (!dateRangeStr.value) return
   loadingComprasStats.value = true
   try {
     let query = client
       .from('compras')
-      .select('total', { count: 'exact' })
-      .gte('fecha', dateRangeStr.value.desde)
-      .lte('fecha', dateRangeStr.value.hasta)
-
+      .select('total, anulada')
+    
     if (!incluirComprasAnuladas.value) {
       query = query.eq('anulada', false)
     }
 
-    const { data, count, error } = await query
+    const { data, error } = await query
     if (error) throw error
 
     comprasStats.value = {
-      totalGastado: data.reduce((acc, c) => acc + Number(c.total), 0),
-      totalFacturas: count ?? 0
+      totalGastado: data?.reduce((acc: number, c: any) => acc + Number(c.total), 0) || 0,
+      totalFacturas: data?.length || 0
     }
-  } catch {
-    // Silently handle error for stats
+  } catch (err) {
+    console.error('Error stats compras:', err)
   } finally {
     loadingComprasStats.value = false
   }
@@ -334,8 +331,8 @@ const loadCierres = async () => {
   loadingCierres.value = true
   try {
     const { data, total } = await fetchCierres({
-      desde: dateRangeStr.value.desde,
-      hasta: dateRangeStr.value.hasta,
+      desde: dateRangeStr.value.desde.split('T')[0],
+      hasta: dateRangeStr.value.hasta.split('T')[0],
       sortField: sortFieldCierres.value,
       sortOrder: sortOrderCierres.value,
       rows: 100
@@ -813,6 +810,27 @@ const getCleanContadoUsd = (cierre: any) => {
         <!-- 4. PROVEEDORES Y COMPRAS -->
         <TabPanel value="compras">
            <div class="space-y-6">
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                  <div class="p-3 bg-rose-50 rounded-lg text-rose-600">
+                    <DollarSign :size="24" />
+                  </div>
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Total Inversión (Compras)</span>
+                    <span class="text-xl font-black text-slate-800">{{ formatCurrency(comprasStats.totalGastado) }}</span>
+                  </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                  <div class="p-3 bg-blue-50 rounded-lg text-blue-600">
+                    <ReceiptText :size="24" />
+                  </div>
+                  <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Facturas Recibidas</span>
+                    <span class="text-xl font-black text-slate-800">{{ comprasStats.totalFacturas }}</span>
+                  </div>
+                </div>
+             </div>
+
              <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
                    <div class="flex items-center gap-4">

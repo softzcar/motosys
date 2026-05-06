@@ -97,6 +97,7 @@ onMounted(() => {
                     :minFractionDigits="2" 
                     :maxFractionDigits="4" 
                     fluid
+                    locale="en-US"
                     :input-class="['pr-12 text-sm font-semibold', { 'bg-slate-100 opacity-70': tasa.is_auto }]"
                     @focus="$event => ($event.target as HTMLInputElement).select()"
                     />                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none uppercase">

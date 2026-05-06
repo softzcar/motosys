@@ -5,6 +5,7 @@ import type { Producto, CategoriaProducto, Marca } from '~/types/database'
 const props = defineProps<{
   producto?: Producto
   loading?: boolean
+  hideStock?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -17,9 +18,11 @@ const { fetchAllMarcas, createMarca, friendlyError: marcaFriendlyError } = useMa
 
 const categorias = ref<CategoriaProducto[]>([])
 const loadingCategorias = ref(false)
+const filteredCategorias = ref<CategoriaProducto[]>([])
 
 const marcas = ref<Marca[]>([])
 const loadingMarcas = ref(false)
+const filteredMarcas = ref<Marca[]>([])
 
 // Inline category creation modal state
 const showCategoriaModal = ref(false)
@@ -84,6 +87,42 @@ const loadMarcas = async () => {
     loadingMarcas.value = false
   }
 }
+
+const searchCategorias = (event: { query: string }) => {
+  const query = event.query.toLowerCase().trim()
+  if (!query) {
+    filteredCategorias.value = [...categorias.value]
+  } else {
+    filteredCategorias.value = categorias.value.filter(c => 
+      c.nombre.toLowerCase().includes(query)
+    )
+  }
+}
+
+const searchMarcas = (event: { query: string }) => {
+  const query = event.query.toLowerCase().trim()
+  if (!query) {
+    filteredMarcas.value = [...marcas.value]
+  } else {
+    filteredMarcas.value = marcas.value.filter(m => 
+      m.nombre.toLowerCase().includes(query)
+    )
+  }
+}
+
+const selectedCategoria = computed({
+  get: () => categorias.value.find(c => c.id === form.value.categoria_id) || null,
+  set: (val: any) => {
+    form.value.categoria_id = val && typeof val === 'object' ? val.id : null
+  }
+})
+
+const selectedMarca = computed({
+  get: () => marcas.value.find(m => m.id === form.value.marca_id) || null,
+  set: (val: any) => {
+    form.value.marca_id = val && typeof val === 'object' ? val.id : null
+  }
+})
 
 const openCategoriaModal = () => {
   newCategoriaNombre.value = ''
@@ -163,10 +202,13 @@ const validate = () => {
   else if (codigo.length < 2) e.codigo_parte = 'Debe tener al menos 2 caracteres'
   else if (codigo.length > 60) e.codigo_parte = 'Máximo 60 caracteres'
 
-  if (form.value.stock === null || form.value.stock === undefined || isNaN(form.value.stock as number))
-    e.stock = 'Ingresa un stock válido'
-  else if ((form.value.stock as number) < 0) e.stock = 'El stock no puede ser negativo'
-  else if (!Number.isInteger(form.value.stock as number)) e.stock = 'El stock debe ser un número entero'
+  // Validamos stock solo si NO está oculto o si es una edición
+  if (!props.hideStock || props.producto) {
+    if (form.value.stock === null || form.value.stock === undefined || isNaN(form.value.stock as number))
+      e.stock = 'Ingresa un stock válido'
+    else if ((form.value.stock as number) < 0) e.stock = 'El stock no puede ser negativo'
+    else if (!Number.isInteger(form.value.stock as number)) e.stock = 'El stock debe ser un número entero'
+  }
 
   if (form.value.precio_venta === null || form.value.precio_venta === undefined || isNaN(form.value.precio_venta as number))
     e.precio_venta = 'Ingresa un precio válido'
@@ -186,7 +228,8 @@ const handleSubmit = () => {
     values: {
       nombre: form.value.nombre.trim(),
       codigo_parte: form.value.codigo_parte.trim(),
-      stock: form.value.stock as number,
+      // Si está oculto y es nuevo, forzamos 0. De lo contrario usamos el valor del form.
+      stock: (props.hideStock && !props.producto) ? 0 : (form.value.stock as number),
       precio_venta: form.value.precio_venta as number,
       categoria_id: form.value.categoria_id || null,
       marca_id: form.value.marca_id || null,
@@ -274,15 +317,16 @@ const handleSubmit = () => {
         Categoría
       </label>
       <div class="flex gap-2 items-center">
-        <Select
+        <AutoComplete
           id="categoria"
-          v-model="form.categoria_id"
-          :options="categorias"
-          option-label="nombre"
-          option-value="id"
-          placeholder="Seleccionar categoría"
+          v-model="selectedCategoria"
+          :suggestions="filteredCategorias"
+          @complete="searchCategorias"
+          optionLabel="nombre"
+          placeholder="Escribe para buscar..."
           :loading="loadingCategorias"
-          show-clear
+          dropdown
+          forceSelection
           class="flex-1"
           :disabled="!form.activo"
         />
@@ -304,15 +348,16 @@ const handleSubmit = () => {
         Marca
       </label>
       <div class="flex gap-2 items-center">
-        <Select
+        <AutoComplete
           id="marca"
-          v-model="form.marca_id"
-          :options="marcas"
-          option-label="nombre"
-          option-value="id"
-          placeholder="Seleccionar marca"
+          v-model="selectedMarca"
+          :suggestions="filteredMarcas"
+          @complete="searchMarcas"
+          optionLabel="nombre"
+          placeholder="Escribe para buscar..."
           :loading="loadingMarcas"
-          show-clear
+          dropdown
+          forceSelection
           class="flex-1"
           :disabled="!form.activo"
         />
@@ -328,10 +373,10 @@ const handleSubmit = () => {
       </div>
     </div>
 
-    <!-- Stock -->
-    <div class="flex flex-col gap-1.5 w-full">
+    <!-- Stock (Condicional) -->
+    <div v-if="!hideStock || producto" class="flex flex-col gap-1.5 w-full">
       <label for="stock" class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-        Stock Inicial <span class="text-red-500">*</span>
+        Stock {{ producto ? 'Actual' : 'Inicial' }} <span class="text-red-500">*</span>
       </label>
       <InputNumber
         id="stock"
@@ -359,6 +404,7 @@ const handleSubmit = () => {
         :max-fraction-digits="2"
         mode="currency"
         currency="USD"
+        locale="en-US"
         :invalid="!!errors.precio_venta"
         class="w-full"
         :disabled="!form.activo"
