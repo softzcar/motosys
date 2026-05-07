@@ -5,11 +5,13 @@ import { useCompras, type DetalleCompra } from '~/composables/useCompras'
 import { useToast } from 'primevue/usetoast'
 import ProductoForm from '~/components/inventario/ProductoForm.vue'
 import { useBarcodeScanner } from '~/composables/useBarcodeScanner'
+import { useDebounceFn } from '@vueuse/core'
 import { Plus, ArrowLeft, Save, Trash2, ShoppingBag, PackageSearch, Package, RotateCcw, XCircle, CheckCircle2, Tag } from 'lucide-vue-next'
 
 const { fetchProveedores, crearProveedor } = useProveedores()
 const { fetchProductos, createProducto, getProductoByCodigo, friendlyError } = useProductos()
 const { registrarCompra, getCompraById } = useCompras()
+const { saveCompraDraft, getCompraDraft, clearCompraDraft } = useOfflineDb()
 const supabase = useSupabaseClient()
 const toast = useToast()
 const router = useRouter()
@@ -18,6 +20,9 @@ const route = useRoute()
 const corrigeCompraId = ref<string | null>(null)
 const compraOrigen = ref<any>(null)
 const saving = ref(false)
+
+const draftFound = ref(false)
+const draftData = ref<any>(null)
 
 const proveedores = ref<any[]>([])
 const productos = ref<any[]>([])
@@ -37,6 +42,35 @@ const empresaIvaConfig = ref(16)
 const isIvaManual = ref(false)
 
 const cart = ref<(DetalleCompra & { nombre: string, codigo_parte: string })[]>([])
+
+// AUTO-SAVE LOGIC
+const debouncedSaveDraft = useDebounceFn(() => {
+  if (corrigeCompraId.value) return // No guardar borradores si estamos corrigiendo una compra
+  if (cart.value.length === 0 && !purchase.value.numero_factura && !purchase.value.id_proveedor) return
+  
+  saveCompraDraft(purchase.value, cart.value)
+}, 1000)
+
+watch([purchase, cart], () => {
+  debouncedSaveDraft()
+}, { deep: true })
+
+const discardDraft = async () => {
+  await clearCompraDraft()
+  draftFound.value = false
+  draftData.value = null
+  toast.add({ severity: 'info', summary: 'Borrador descartado', life: 3000 })
+}
+
+const restoreDraft = () => {
+  if (!draftData.value) return
+  purchase.value = draftData.value.purchase
+  cart.value = draftData.value.cart
+  draftFound.value = false
+  draftData.value = null
+  calculateTotal()
+  toast.add({ severity: 'success', summary: 'Borrador restaurado', life: 3000 })
+}
 const selectedProducto = ref<any>(null)
 const confirmedProducto = ref<any>(null)
 const itemCantidad = ref(1)
@@ -249,6 +283,8 @@ const onSave = async () => {
       ...(corrigeCompraId.value ? { corrige_compra_id: corrigeCompraId.value } : {})
     } as any, detalles)
 
+    await clearCompraDraft() // Limpiar borrador local al guardar con éxito
+
     console.log('Compra guardada con éxito')
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Compra registrada e inventario actualizado', life: 3000 })
     router.push('/compras')
@@ -316,6 +352,13 @@ onMounted(async () => {
   const fromId = route.query.from
   if (typeof fromId === 'string' && fromId) {
     await cargarPrefillDesde(fromId)
+  } else {
+    // Si no es una corrección, buscar borradores locales
+    const draft = await getCompraDraft()
+    if (draft && (draft.cart.length > 0 || draft.purchase.numero_factura || draft.purchase.id_proveedor)) {
+      draftFound.value = true
+      draftData.value = draft
+    }
   }
 })
 
@@ -351,6 +394,25 @@ const formatCurrency = (value: number) => {
           :loading="saving"
           class="shadow-md" 
         />
+      </div>
+    </div>
+
+    <!-- Banner de borrador encontrado -->
+    <div v-if="draftFound" class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
+      <div class="flex items-start gap-3">
+        <div class="p-2 bg-blue-100 rounded-lg">
+          <PackageSearch class="w-5 h-5 text-blue-600" />
+        </div>
+        <div>
+          <p class="font-black text-blue-800 uppercase tracking-tight text-xs mb-0.5">Borrador detectado</p>
+          <p class="text-sm text-blue-700 leading-tight">
+            Tienes una compra pendiente guardada localmente ({{ new Date(draftData.updated_at).toLocaleString() }}).
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button label="Descartar" severity="secondary" text size="small" @click="discardDraft" />
+        <Button label="Continuar Compra" severity="primary" size="small" @click="restoreDraft" />
       </div>
     </div>
 

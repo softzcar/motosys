@@ -13,6 +13,13 @@ export interface VentaOffline {
   total: number;
 }
 
+export interface CompraBorrador {
+  id?: number;
+  purchase: any;
+  cart: any[];
+  updated_at: string;
+}
+
 export class MotoSysDatabase extends Dexie {
   productos!: Table<Producto>;
   clientes!: Table<Cliente>;
@@ -20,18 +27,20 @@ export class MotoSysDatabase extends Dexie {
   tasas!: Table<any>;
   metodos_pago!: Table<any>;
   ventas_pendientes!: Table<VentaOffline>;
+  compras_borradores!: Table<CompraBorrador>;
   perfil!: Table<Perfil>; // Usuario actualmente activo (sesión)
   profiles_cache!: Table<Perfil>; // Bóveda de usuarios autorizados (persiste al logout)
 
   constructor() {
     super('MotoSysDB_v2');
-    this.version(4).stores({
+    this.version(5).stores({
       productos: 'id, nombre, codigo_parte, categoria_id, ubicacion',
       clientes: 'id, cedula, nombre',
       categorias: 'id, nombre',
       tasas: 'codigo', 
       metodos_pago: 'id, nombre, moneda',
       ventas_pendientes: 'id_temporal, fecha, sincronizada',
+      compras_borradores: '++id',
       perfil: 'id',
       profiles_cache: 'email' // Identificamos por email para el login offline
     });
@@ -131,6 +140,23 @@ export const useOfflineDb = () => {
     }
   };
 
+  const saveCompraDraft = async (purchase: any, cart: any[]) => {
+    await db.compras_borradores.put({
+      id: 1, // Usamos ID fijo para el borrador actual de la sesión
+      purchase: JSON.parse(JSON.stringify(purchase)), // Desvincular reactividad
+      cart: JSON.parse(JSON.stringify(cart)),
+      updated_at: new Date().toISOString()
+    });
+  };
+
+  const getCompraDraft = async () => {
+    return await db.compras_borradores.get(1);
+  };
+
+  const clearCompraDraft = async () => {
+    await db.compras_borradores.delete(1);
+  };
+
   return {
     isOnline: computed(() => networkStore.isOnline),
     cacheProductos,
@@ -142,6 +168,9 @@ export const useOfflineDb = () => {
     getLocalPerfil,
     getAuthorizedProfile,
     registrarVentaOffline,
+    saveCompraDraft,
+    getCompraDraft,
+    clearCompraDraft,
     purgeOldData
   };
 };
