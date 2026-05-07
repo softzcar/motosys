@@ -97,10 +97,6 @@ const confirmarDesactivacionAutomatica = async () => {
 
 const confirmarGuardar = async () => {
   if (!producto.value || !pendingValues.value) return
-  if (motivo.value.trim().length < 10) {
-    toast.add({ severity: 'warn', summary: 'Motivo requerido', detail: 'Mínimo 10 caracteres', life: 3000 })
-    return
-  }
   saving.value = true
   try {
     await updateProductoConMotivo(producto.value.id, pendingValues.value, motivo.value.trim())
@@ -137,12 +133,12 @@ onMounted(loadProducto)
     <Dialog
       v-model:visible="motivoModal"
       modal
-      header="Motivo del cambio"
+      header="Motivo del cambio (Opcional)"
       :style="{ width: '480px' }"
       :closable="!saving"
     >
       <p class="text-sm text-slate-600 mb-3">
-        Indica por qué se modifica este producto. El cambio quedará registrado en la auditoría.
+        Puedes indicar por qué se modifica este producto para el registro de auditoría.
       </p>
       <Textarea
         v-model="motivo"
@@ -151,15 +147,11 @@ onMounted(loadProducto)
         placeholder="Ej: Corrección de precio según nueva lista del proveedor"
         :disabled="saving"
       />
-      <div class="text-xs text-slate-500 mt-1">
-        {{ motivo.trim().length }} / 10 mínimo
-      </div>
       <template #footer>
         <Button label="Cancelar" severity="secondary" text :disabled="saving" @click="motivoModal = false" />
         <Button
-          label="Guardar"
+          label="Guardar Cambios"
           :loading="saving"
-          :disabled="motivo.trim().length < 10"
           @click="confirmarGuardar"
         />
       </template>

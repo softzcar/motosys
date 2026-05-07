@@ -39,14 +39,16 @@ DECLARE
   v_before public.productos;
   v_after public.productos;
   v_rol TEXT;
+  v_motivo_final TEXT;
 BEGIN
   SELECT rol INTO v_rol FROM public.perfiles WHERE id = auth.uid();
   IF v_rol IS NULL OR v_rol <> 'admin' THEN
     RAISE EXCEPTION 'Solo los administradores pueden editar productos';
   END IF;
 
-  IF p_motivo IS NULL OR length(btrim(p_motivo)) < 10 THEN
-    RAISE EXCEPTION 'El motivo del cambio debe tener al menos 10 caracteres';
+  v_motivo_final := btrim(COALESCE(p_motivo, ''));
+  IF length(v_motivo_final) = 0 THEN
+    v_motivo_final := 'Sin motivo especificado';
   END IF;
 
   SELECT * INTO v_before FROM public.productos WHERE id = p_id FOR UPDATE;
@@ -72,7 +74,7 @@ BEGIN
     producto_id, codigo_parte, nombre, accion, motivo,
     valor_anterior, valor_nuevo, usuario_id
   ) VALUES (
-    v_after.id, v_after.codigo_parte, v_after.nombre, 'UPDATE', btrim(p_motivo),
+    v_after.id, v_after.codigo_parte, v_after.nombre, 'UPDATE', v_motivo_final,
     to_jsonb(v_before), to_jsonb(v_after), auth.uid()
   );
 
