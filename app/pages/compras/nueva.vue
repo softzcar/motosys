@@ -33,6 +33,7 @@ const purchase = ref({
   numero_factura: '',
   fecha: new Date().toISOString().split('T')[0],
   id_proveedor: null,
+  descuento: 0,
   subtotal: 0,
   iva: 0,
   total: 0
@@ -224,25 +225,29 @@ const recalcItem = (index: number) => {
 }
 
 const calculateTotal = () => {
-  purchase.value.subtotal = cart.value.reduce((acc, item) => acc + item.subtotal, 0)
+  const subtotalItems = cart.value.reduce((acc, item) => acc + item.subtotal, 0)
+  purchase.value.subtotal = subtotalItems
+  
+  const descPorcentaje = Number(purchase.value.descuento) || 0
+  const montoDescuento = subtotalItems * (descPorcentaje / 100)
+  const baseImponible = subtotalItems - montoDescuento
   
   if (!isIvaManual.value) {
-    purchase.value.iva = purchase.value.subtotal * (empresaIvaConfig.value / 100)
+    purchase.value.iva = baseImponible * (empresaIvaConfig.value / 100)
   }
   
-  purchase.value.total = purchase.value.subtotal + purchase.value.iva
+  purchase.value.total = baseImponible + purchase.value.iva
 }
 
 watch(isIvaManual, (manual) => {
   if (!manual) {
-    purchase.value.iva = purchase.value.subtotal * (empresaIvaConfig.value / 100)
     calculateTotal()
   }
 })
 
 watch(() => purchase.value.iva, () => {
   if (isIvaManual.value) {
-    purchase.value.total = purchase.value.subtotal + purchase.value.iva
+    calculateTotal()
   }
 })
 
@@ -277,6 +282,7 @@ const onSave = async () => {
       numero_factura: purchase.value.numero_factura,
       fecha: fechaFinal,
       id_proveedor: purchase.value.id_proveedor,
+      descuento: purchase.value.descuento,
       subtotal: purchase.value.subtotal,
       iva: purchase.value.iva,
       total: purchase.value.total,
@@ -323,6 +329,7 @@ const cargarPrefillDesde = async (id: string) => {
     compraOrigen.value = original
     purchase.value.id_proveedor = original.id_proveedor
     purchase.value.numero_factura = original.numero_factura
+    purchase.value.descuento = Number(original.descuento ?? 0)
     isIvaManual.value = true
     purchase.value.iva = Number(original.iva ?? 0)
 
@@ -470,11 +477,21 @@ const formatCurrency = (value: number) => {
               <DatePicker v-model="purchase.fecha" dateFormat="yy-mm-dd" showIcon class="w-full" />
             </div>
 
+            <div class="field">
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Porcentaje Descuento (%)</label>
+              <InputNumber v-model="purchase.descuento" :min="0" :max="100" suffix="%" class="w-full" :minFractionDigits="2" :maxFractionDigits="2" @update:modelValue="calculateTotal" @focus="$event => ($event.target as HTMLInputElement).select()" />
+            </div>
+
             <!-- Total display for tablet/small screens inside sidebar -->
             <div class="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 flex flex-col gap-2">
                <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-100">
                   <span class="text-[10px] font-bold text-slate-500">SUBTOTAL</span>
                   <span class="text-sm font-bold text-slate-800">{{ formatCurrency(purchase.subtotal) }}</span>
+               </div>
+
+               <div v-if="purchase.descuento > 0" class="flex justify-between items-center bg-white p-2 rounded border border-slate-100">
+                  <span class="text-[10px] font-bold text-red-500">DESCUENTO ({{ purchase.descuento }}%)</span>
+                  <span class="text-sm font-bold text-red-600">-{{ formatCurrency(purchase.subtotal * (purchase.descuento / 100)) }}</span>
                </div>
                
                <div class="flex flex-col gap-2 bg-white p-2 rounded border border-slate-100">

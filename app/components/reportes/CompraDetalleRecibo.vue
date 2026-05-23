@@ -111,6 +111,10 @@ const formatDateTime = (dateString: string) => {
           <span>SUBTOTAL</span>
           <span>{{ formatCurrency(compra.subtotal) }}</span>
        </div>
+       <div v-if="Number(compra.descuento || 0) > 0" class="flex justify-between text-xs text-red-500 font-bold">
+          <span>DESCUENTO ({{ Number(compra.descuento) }}%)</span>
+          <span>-{{ formatCurrency(compra.subtotal * (Number(compra.descuento) / 100)) }}</span>
+       </div>
        <div class="flex justify-between text-xs text-slate-500">
           <span>IVA</span>
           <span>{{ formatCurrency(compra.iva) }}</span>

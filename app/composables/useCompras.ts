@@ -13,6 +13,7 @@ export interface Compra {
   numero_factura: string
   fecha: string
   id_proveedor: string
+  descuento?: number
   subtotal: number
   iva: number
   total: number

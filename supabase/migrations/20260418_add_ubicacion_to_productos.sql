@@ -1,6 +1,6 @@
 -- Añadir columna ubicacion a la tabla productos
 ALTER TABLE public.productos 
-ADD COLUMN ubicacion TEXT;
+ADD COLUMN IF NOT EXISTS ubicacion TEXT;
 
 -- Actualizar comentarios
 COMMENT ON COLUMN public.productos.ubicacion IS 'Ubicación física del producto en el anaquel o estante';

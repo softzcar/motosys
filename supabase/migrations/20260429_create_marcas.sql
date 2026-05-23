@@ -24,6 +24,7 @@ CREATE POLICY "Admin gestiona marcas" ON public.marcas
     );
 
 -- 4. Trigger para updated_at
+DROP TRIGGER IF EXISTS trg_marcas_updated_at ON public.marcas;
 CREATE TRIGGER trg_marcas_updated_at
     BEFORE UPDATE ON public.marcas
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
