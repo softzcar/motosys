@@ -25,7 +25,7 @@ const buscar = useDebounceFn(async () => {
   
   try {
     if (isOnline.value) {
-      const { data } = await fetchProductos({ search: search.value, rows: 10, soloActivos: true })
+      const { data } = await fetchProductos({ search: search.value, rows: 200, soloActivos: true })
       resultados.value = data
     } else {
       // Búsqueda Offline en Dexie
@@ -36,7 +36,7 @@ const buscar = useDebounceFn(async () => {
           p.nombre.toLowerCase().includes(term) || 
           p.codigo_parte.toLowerCase().includes(term)
         )
-        .limit(10)
+        .limit(200)
         .toArray()
       resultados.value = localResults
     }

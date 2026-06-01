@@ -182,7 +182,7 @@ const loadProveedores = async (query = '') => {
 const searchProductos = async (event: any) => {
   loadingProductos.value = true
   try {
-    const { data } = await fetchProductos({ search: event.query, rows: 10, soloActivos: true })
+    const { data } = await fetchProductos({ search: event.query, rows: 200, soloActivos: true })
     productos.value = data
   } finally {
     loadingProductos.value = false
