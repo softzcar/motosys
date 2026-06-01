@@ -17,7 +17,12 @@ const filters = ref({
 })
 const sortField = ref('fecha')
 const sortOrder = ref(-1)
-const incluirAnuladas = ref(false)
+const estadoFiltro = ref<'todas' | 'activas' | 'eliminadas'>('activas')
+const opcionesEstado = ref([
+  { label: 'Activas', value: 'activas' },
+  { label: 'Todas', value: 'todas' },
+  { label: 'Anuladas', value: 'eliminadas' }
+])
 
 const detailsModal = ref(false)
 const loadingDetails = ref(false)
@@ -40,10 +45,10 @@ const loadCompras = async (event?: any) => {
     const { data, total } = await fetchCompras({
       search: filters.value.global.value ?? undefined,
       page,
-      rows: event?.rows ?? 10,
+      rows: event?.rows ?? 50,
       sortField: sortField.value,
       sortOrder: sortOrder.value,
-      incluirAnuladas: incluirAnuladas.value
+      estado: estadoFiltro.value
     })
     compras.value = data
     totalRecords.value = total
@@ -134,7 +139,7 @@ const onFilter = () => {
   loadCompras()
 }
 
-watch(incluirAnuladas, () => loadCompras())
+watch(estadoFiltro, () => loadCompras())
 
 onMounted(() => {
   loadCompras()
@@ -158,12 +163,13 @@ const formatDateTime = (dateString: string) => {
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
       <h1 class="m-0 text-2xl font-bold text-slate-800">Registro de Compras</h1>
       <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
-          <ToggleSwitch v-model="incluirAnuladas" inputId="toggleAnuladas" />
-          <label for="toggleAnuladas" class="text-xs font-bold text-slate-600 uppercase tracking-wide cursor-pointer select-none">
-            Mostrar anuladas
-          </label>
-        </div>
+        <SelectButton 
+          v-model="estadoFiltro" 
+          :options="opcionesEstado" 
+          optionLabel="label" 
+          optionValue="value" 
+          class="shadow-sm" 
+        />
         <NuxtLink to="/compras/nueva">
           <Button severity="success" class="shadow-sm flex items-center gap-2">
             <Plus :size="16" />
@@ -178,7 +184,7 @@ const formatDateTime = (dateString: string) => {
       :value="compras"
       dataKey="id"
       :paginator="true"
-      :rows="10"
+      :rows="50"
       :totalRecords="totalRecords"
       :loading="loading"
       @page="loadCompras"

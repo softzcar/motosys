@@ -31,7 +31,7 @@ const loadProveedores = async (event?: any) => {
     const { data, total } = await fetchProveedores({ 
       search: filters.value.global.value ?? undefined,
       page,
-      rows: event?.rows ?? 10,
+      rows: event?.rows ?? 50,
       sortField: sortField.value,
       sortOrder: sortOrder.value
     })
@@ -142,7 +142,7 @@ const onFilter = () => {
       :value="proveedores" 
       dataKey="id" 
       :paginator="true" 
-      :rows="10" 
+      :rows="50" 
       :totalRecords="totalRecords"
       :loading="loading"
       @page="loadProveedores"

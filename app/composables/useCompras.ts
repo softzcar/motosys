@@ -41,6 +41,7 @@ export const useCompras = () => {
     desde?: string
     hasta?: string
     incluirAnuladas?: boolean
+    estado?: 'todas' | 'activas' | 'eliminadas'
   }) => {
     const page = opts?.page ?? 0
     const rows = opts?.rows ?? 20
@@ -56,7 +57,35 @@ export const useCompras = () => {
     const sortField = opts?.sortField || 'fecha'
     const isAscending = opts?.sortOrder !== -1 // Invertido para que 1 o undefined sea asc, -1 desc
 
-    query = query.order(sortField, { ascending: isAscending })
+    if (sortField === 'proveedores(nombre)' || sortField === 'proveedores.nombre') {
+      query = query.order('nombre', { foreignTable: 'proveedores', ascending: isAscending })
+      query = query.order('id', { ascending: true })
+    } else {
+      query = query.order(sortField, { ascending: isAscending })
+      // Si el sortField no es la llave primaria, agregamos 'id' como desempate estable
+      if (sortField !== 'id') {
+        query = query.order('id', { ascending: true })
+      }
+    }
+
+    // Filtro por estado (todas, activas, eliminadas)
+    if (opts?.estado === 'activas') {
+      query = query.eq('anulada', false)
+    } else if (opts?.estado === 'eliminadas') {
+      query = query.eq('anulada', true)
+    } else if (opts?.estado === 'todas') {
+      // No filtrar por anulada, trae todas
+    } else {
+      // Fallback a incluirAnuladas por compatibilidad
+      if (opts?.incluirAnuladas === false) {
+        query = query.eq('anulada', false)
+      } else if (opts?.incluirAnuladas === true) {
+        // Traer todas
+      } else {
+        // Por defecto, traer solo las activas si no se especifica nada
+        query = query.eq('anulada', false)
+      }
+    }
 
     // Filtros opcionales
     if (opts?.desde) query = query.gte('fecha', opts.desde)

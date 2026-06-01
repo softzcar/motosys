@@ -54,7 +54,7 @@ const loadProductos = async () => {
     const result = await fetchProductos({
       search: currentSearch.value,
       page: currentPage.value,
-      rows: 20,
+      rows: 50,
       sortField: sortField.value,
       sortOrder: sortOrder.value,
       categoriaId: selectedCategoriaId.value,

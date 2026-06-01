@@ -31,11 +31,19 @@ export const useCategoriasProductos = () => {
     const from = page * rows
     const to = from + rows - 1
 
+    const sortField = opts?.sortField || 'nombre'
+    const isAscending = opts?.sortOrder === 1
+
     let query = client
       .from('categorias_productos')
       .select('*', { count: 'exact' })
-      .order(opts?.sortField || 'nombre', { ascending: opts?.sortOrder === 1 })
-      .range(from, to)
+      .order(sortField, { ascending: isAscending })
+
+    if (sortField !== 'id') {
+      query = query.order('id', { ascending: true })
+    }
+
+    query = query.range(from, to)
 
     if (opts?.search) {
       query = query.ilike('nombre', `%${opts.search}%`)

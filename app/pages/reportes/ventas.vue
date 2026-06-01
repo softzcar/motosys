@@ -38,7 +38,7 @@ const loadVentas = async (event?: any) => {
       desde: start.toISOString(),
       hasta: end.toISOString(),
       page: currentPage.value,
-      rows: 20,
+      rows: 50,
       sortField: sortField.value,
       sortOrder: sortOrder.value
     })
@@ -105,7 +105,7 @@ onMounted(loadVentas)
       :value="ventas"
       :loading="loading"
       :total-records="total"
-      :rows="20"
+      :rows="50"
       lazy
       paginator
       striped-rows

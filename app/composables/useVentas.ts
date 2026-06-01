@@ -58,8 +58,21 @@ export const useVentas = () => {
     let query = client
       .from('ventas')
       .select(selectStr, { count: 'exact' })
-      .order(sortField, { ascending: isAscending })
-      .range(from, to)
+
+    if (sortField === 'clientes(nombre)' || sortField === 'clientes.nombre') {
+      query = query.order('nombre', { foreignTable: 'clientes', ascending: isAscending })
+      query = query.order('id', { ascending: true })
+    } else if (sortField === 'vendedor(nombre)' || sortField === 'vendedor.nombre' || sortField === 'perfiles(nombre)') {
+      query = query.order('nombre', { foreignTable: 'perfiles', ascending: isAscending })
+      query = query.order('id', { ascending: true })
+    } else {
+      query = query.order(sortField, { ascending: isAscending })
+      if (sortField !== 'id') {
+        query = query.order('id', { ascending: true })
+      }
+    }
+
+    query = query.range(from, to)
 
     if (opts?.desde) query = query.gte('fecha', opts.desde)
     if (opts?.hasta) query = query.lte('fecha', opts.hasta)

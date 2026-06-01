@@ -26,7 +26,7 @@ const load = async () => {
     const result = await fetchEmpleados({
       search: currentSearch.value,
       page: currentPage.value,
-      rows: 20,
+      rows: 50,
       sortField: sortField.value,
       sortOrder: sortOrder.value,
       incluirInactivos: mostrarInactivos.value

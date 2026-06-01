@@ -18,7 +18,7 @@ const metodos = ref<MetodoPago[]>([])
 const loading = ref(false)
 const totalRecords = ref(0)
 const page = ref(0)
-const rows = ref(15)
+const rows = ref(50)
 const sortField = ref('fecha')
 const sortOrder = ref(-1)
 

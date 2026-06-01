@@ -28,7 +28,7 @@ const loadCategorias = async () => {
     const result = await fetchCategorias({
       search: currentSearch.value,
       page: currentPage.value,
-      rows: 20,
+      rows: 50,
       sortField: sortField.value,
       sortOrder: sortOrder.value
     })
@@ -154,10 +154,10 @@ onMounted(loadCategorias)
         :value="categorias"
         :loading="loading"
         :total-records="total"
-        :rows="20"
+        :rows="50"
         lazy
         paginator
-        :rows-per-page-options="[10, 20, 50]"
+        :rows-per-page-options="[10, 20, 50, 100]"
         striped-rows
         :sort-field="sortField"
         :sort-order="sortOrder"

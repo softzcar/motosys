@@ -55,10 +55,10 @@ const onSearch = useDebounceFn(() => emit('search', search.value), 400)
       :value="empleados"
       :loading="loading"
       :total-records="total"
-      :rows="20"
+      :rows="50"
       lazy
       paginator
-      :rows-per-page-options="[10, 20, 50]"
+      :rows-per-page-options="[10, 20, 50, 100]"
       striped-rows
       :sort-field="sortField"
       :sort-order="sortOrder"

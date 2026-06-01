@@ -28,6 +28,9 @@ export const useProductos = () => {
     const sortField = opts?.sortField || 'nombre'
     const isAscending = opts?.sortOrder === 1
     query = query.order(sortField, { ascending: isAscending })
+    if (sortField !== 'id') {
+      query = query.order('id', { ascending: true })
+    }
 
     if (opts?.soloActivos === true) {
       query = query.eq('activo', true)
@@ -156,6 +159,7 @@ export const useProductos = () => {
       .from('inventario_auditoria')
       .select('*, usuario:perfiles!fk_inventario_auditoria_usuario_perfil(nombre)', { count: 'exact' })
       .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
       .range(from, to)
 
     if (opts?.desde) query = query.gte('created_at', opts.desde)

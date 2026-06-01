@@ -25,10 +25,17 @@ export const useClientes = () => {
     const from = page * rows
     const to = from + rows - 1
 
+    const sortField = opts?.sortField || 'nombre'
+    const isAscending = opts?.sortOrder === 1 || !opts?.sortField
+
     let query = client
       .from('clientes')
       .select('*', { count: 'exact' })
-      .order(opts?.sortField || 'nombre', { ascending: opts?.sortOrder === 1 || !opts?.sortField })
+      .order(sortField, { ascending: isAscending })
+
+    if (sortField !== 'id') {
+      query = query.order('id', { ascending: true })
+    }
 
     if (opts?.search) {
       query = query.or(`cedula.ilike.%${opts.search}%,nombre.ilike.%${opts.search}%`)

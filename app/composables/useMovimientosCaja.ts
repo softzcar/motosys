@@ -60,13 +60,20 @@ export const useMovimientosCaja = () => {
     const from = page * rows
     const to = from + rows - 1
 
+    const sortField = opts?.sortField || 'fecha'
+    const isAscending = opts?.sortOrder === 1
+
     let query = client
       .from('movimientos_caja')
       .select(
         '*, metodos_pago(id, nombre, moneda), responsable:perfiles(id, nombre)',
         { count: 'exact' }
       )
-      .order(opts?.sortField || 'fecha', { ascending: opts?.sortOrder === 1 })
+      .order(sortField, { ascending: isAscending })
+
+    if (sortField !== 'id') {
+      query = query.order('id', { ascending: true })
+    }
 
     if (opts?.soloAbiertosOMesActual) {
       const desde = opts.desde || new Date(0).toISOString()

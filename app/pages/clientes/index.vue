@@ -21,7 +21,7 @@ const filters = ref({
 const sortField = ref('nombre')
 const sortOrder = ref(1)
 const totalRecords = ref(0)
-const rowsPerPage = ref(10)
+const rowsPerPage = ref(50)
 const firstRow = ref(0)
 
 const formData = ref<Partial<Cliente>>({

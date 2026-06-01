@@ -74,13 +74,21 @@ export const useCierresCaja = () => {
     const from = page * rows
     const to = from + rows - 1
 
+    const sortField = opts?.sortField || 'fecha'
+    const isAscending = opts?.sortOrder === 1
+
     let query = client
       .from('cierres_caja')
       .select('*, responsable:perfiles(id, nombre), cierres_caja_detalle(*, metodos_pago(id, nombre, moneda))', {
         count: 'exact'
       })
-      .order(opts?.sortField || 'fecha', { ascending: opts?.sortOrder === 1 })
-      .range(from, to)
+      .order(sortField, { ascending: isAscending })
+
+    if (sortField !== 'id') {
+      query = query.order('id', { ascending: true })
+    }
+
+    query = query.range(from, to)
 
     if (opts?.desde) query = query.gte('fecha', opts.desde)
     if (opts?.hasta) query = query.lte('fecha', opts.hasta)

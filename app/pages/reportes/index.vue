@@ -186,7 +186,7 @@ const loadVentasPorCliente = async (event?: any) => {
   // En este reporte no aplicamos el filtro de fecha global por defecto si hay una búsqueda,
   // para permitir ver todo el historial del cliente.
   loadingVentasCliente.value = true
-  const rows = event?.rows ?? 10
+  const rows = event?.rows ?? 50
   const page = event?.page ?? 0
   
   try {
@@ -620,7 +620,7 @@ const getCleanContadoUsd = (cierre: any) => {
 
                 <DataTable 
                    :value="ventas" 
-                   lazy paginator :rows="10" :totalRecords="totalVentasRecords" :loading="loadingVentas"
+                   lazy paginator :rows="50" :totalRecords="totalVentasRecords" :loading="loadingVentas"
                    @sort="e => { sortFieldVentas = e.sortField; sortOrderVentas = e.sortOrder; loadVentas() }"
                    :sortField="sortFieldVentas" :sortOrder="sortOrderVentas"
                    stripedRows class="p-datatable-sm"
@@ -688,7 +688,7 @@ const getCleanContadoUsd = (cierre: any) => {
                     <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
                  </div>
                  <DataTable 
-                    :value="cierres" lazy paginator :rows="10" :totalRecords="totalCierresRecords" :loading="loadingCierres"
+                    :value="cierres" lazy paginator :rows="50" :totalRecords="totalCierresRecords" :loading="loadingCierres"
                     @sort="e => { sortFieldCierres = e.sortField; sortOrderCierres = e.sortOrder; loadCierres() }"
                     :sortField="sortFieldCierres" :sortOrder="sortOrderCierres"
                     stripedRows class="p-datatable-sm"
@@ -775,7 +775,7 @@ const getCleanContadoUsd = (cierre: any) => {
                 </div>
 
                 <DataTable 
-                   :value="inventario" lazy paginator :rows="20" :totalRecords="totalInventarioRecords" :loading="loadingInventario"
+                   :value="inventario" lazy paginator :rows="50" :totalRecords="totalInventarioRecords" :loading="loadingInventario"
                    @sort="e => { sortFieldInventario = e.sortField; sortOrderInventario = e.sortOrder; loadInventario() }"
                    :sortField="sortFieldInventario" :sortOrder="sortOrderInventario"
                    stripedRows class="p-datatable-sm"
@@ -850,7 +850,7 @@ const getCleanContadoUsd = (cierre: any) => {
                 </div>
 
                 <DataTable 
-                   :value="compras" lazy paginator :rows="10" :totalRecords="totalComprasRecords" :loading="loadingCompras"
+                   :value="compras" lazy paginator :rows="50" :totalRecords="totalComprasRecords" :loading="loadingCompras"
                    @sort="e => { sortFieldCompras = e.sortField; sortOrderCompras = e.sortOrder; loadCompras() }"
                    :sortField="sortFieldCompras" :sortOrder="sortOrderCompras"
                    stripedRows class="p-datatable-sm"
@@ -905,7 +905,7 @@ const getCleanContadoUsd = (cierre: any) => {
                  </div>
 
                  <DataTable 
-                    :value="ventasCliente" lazy paginator :rows="10" :totalRecords="totalVentasClienteRecords" :loading="loadingVentasCliente"
+                    :value="ventasCliente" lazy paginator :rows="50" :totalRecords="totalVentasClienteRecords" :loading="loadingVentasCliente"
                     @page="loadVentasPorCliente"
                     @sort="e => { sortFieldVentasCliente = e.sortField; sortOrderVentasCliente = e.sortOrder; loadVentasPorCliente() }"
                     :sortField="sortFieldVentasCliente" :sortOrder="sortOrderVentasCliente"
@@ -966,7 +966,7 @@ const getCleanContadoUsd = (cierre: any) => {
               </div>
 
               <DataTable 
-                 :value="auditoria" lazy paginator :rows="15" :totalRecords="totalAuditoriaRecords" :loading="loadingAuditoria"
+                 :value="auditoria" lazy paginator :rows="50" :totalRecords="totalAuditoriaRecords" :loading="loadingAuditoria"
                  stripedRows class="p-datatable-sm text-xs"
               >
                  <Column field="created_at" header="Fecha">
