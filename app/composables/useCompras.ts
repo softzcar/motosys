@@ -49,9 +49,13 @@ export const useCompras = () => {
     const to = from + rows - 1
 
     // Simplificamos al máximo para descartar errores de join
+    const selectStr = (opts?.searchProveedor && opts.searchProveedor.trim() !== '')
+      ? '*, proveedores!inner(nombre)'
+      : '*, proveedores(nombre)'
+
     let query = client
       .from('compras')
-      .select('*, proveedores(nombre)', { count: 'exact' })
+      .select(selectStr, { count: 'exact' })
 
     // Ordenamiento por defecto
     const sortField = opts?.sortField || 'fecha'

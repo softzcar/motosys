@@ -52,6 +52,8 @@ const loadingVentas = ref(false)
 const totalVentasRecords = ref(0)
 const sortFieldVentas = ref('fecha')
 const sortOrderVentas = ref(-1)
+const firstVentas = ref(0)
+const rowsVentas = ref(50)
 const searchCliente = ref('')
 const incluirVentasAnuladas = ref(false)
 const ventasStats = ref({ total: 0, count: 0, promedio: 0 })
@@ -67,6 +69,8 @@ const loadingInventario = ref(false)
 const totalInventarioRecords = ref(0)
 const sortFieldInventario = ref('stock')
 const sortOrderInventario = ref(1)
+const firstInventario = ref(0)
+const rowsInventario = ref(50)
 const searchProducto = ref('')
 const categoriaId = ref<string | null>(null)
 const categorias = ref<any[]>([])
@@ -79,6 +83,8 @@ const loadingCompras = ref(false)
 const totalComprasRecords = ref(0)
 const sortFieldCompras = ref('fecha')
 const sortOrderCompras = ref(-1)
+const firstCompras = ref(0)
+const rowsCompras = ref(50)
 const searchProveedor = ref('')
 const incluirComprasAnuladas = ref(false)
 const comprasStats = ref({ totalGastado: 0, totalFacturas: 0 })
@@ -94,6 +100,8 @@ const loadingCierres = ref(false)
 const totalCierresRecords = ref(0)
 const sortFieldCierres = ref('fecha')
 const sortOrderCierres = ref(-1)
+const firstCierres = ref(0)
+const rowsCierres = ref(50)
 
 const closureDetailsModal = ref(false)
 const loadingClosureDetails = ref(false)
@@ -205,15 +213,34 @@ const loadVentasPorCliente = async (event?: any) => {
   }
 }
 
-const loadVentas = async () => {
+const loadVentas = async (event?: any) => {
   if (!dateRangeStr.value) return
   loadingVentas.value = true
+
+  const isDataTableEvent = event && (event.first !== undefined || event.sortField !== undefined)
+  if (isDataTableEvent) {
+    if (event.first !== undefined) {
+      firstVentas.value = event.first
+    }
+    if (event.rows !== undefined) {
+      rowsVentas.value = event.rows
+    }
+    if (event.sortField) {
+      sortFieldVentas.value = event.sortField
+      sortOrderVentas.value = event.sortOrder
+    }
+  } else {
+    firstVentas.value = 0
+  }
+
+  const page = Math.floor(firstVentas.value / rowsVentas.value)
+
   try {
     const { data, total } = await fetchVentas({
       desde: dateRangeStr.value.desde,
       hasta: dateRangeStr.value.hasta,
-      page: 0,
-      rows: 100,
+      page,
+      rows: rowsVentas.value,
       sortField: sortFieldVentas.value,
       sortOrder: sortOrderVentas.value,
       searchCliente: searchCliente.value,
@@ -254,15 +281,35 @@ const loadVentasStats = async () => {
   }
 }
 
-const loadInventario = async () => {
+const loadInventario = async (event?: any) => {
   loadingInventario.value = true
+
+  const isDataTableEvent = event && (event.first !== undefined || event.sortField !== undefined)
+  if (isDataTableEvent) {
+    if (event.first !== undefined) {
+      firstInventario.value = event.first
+    }
+    if (event.rows !== undefined) {
+      rowsInventario.value = event.rows
+    }
+    if (event.sortField) {
+      sortFieldInventario.value = event.sortField
+      sortOrderInventario.value = event.sortOrder
+    }
+  } else {
+    firstInventario.value = 0
+  }
+
+  const page = Math.floor(firstInventario.value / rowsInventario.value)
+
   try {
     const { data, total } = await fetchProductos({
       search: searchProducto.value,
       categoriaId: categoriaId.value,
+      page,
+      rows: rowsInventario.value,
       sortField: sortFieldInventario.value,
-      sortOrder: sortOrderInventario.value,
-      rows: 100
+      sortOrder: sortOrderInventario.value
     })
     inventario.value = data
     totalInventarioRecords.value = total
@@ -281,15 +328,35 @@ const loadInventarioStats = async () => {
   }
 }
 
-const loadCompras = async () => {
+const loadCompras = async (event?: any) => {
   loadingCompras.value = true
+
+  const isDataTableEvent = event && (event.first !== undefined || event.sortField !== undefined)
+  if (isDataTableEvent) {
+    if (event.first !== undefined) {
+      firstCompras.value = event.first
+    }
+    if (event.rows !== undefined) {
+      rowsCompras.value = event.rows
+    }
+    if (event.sortField) {
+      sortFieldCompras.value = event.sortField
+      sortOrderCompras.value = event.sortOrder
+    }
+  } else {
+    firstCompras.value = 0
+  }
+
+  const page = Math.floor(firstCompras.value / rowsCompras.value)
+
   try {
     const { data, total } = await fetchCompras({
-      search: searchProveedor.value || undefined, // Usamos search para factura o proveedor
+      searchProveedor: searchProveedor.value || undefined,
       incluirAnuladas: incluirComprasAnuladas.value,
+      page,
+      rows: rowsCompras.value,
       sortField: sortFieldCompras.value,
-      sortOrder: sortOrderCompras.value,
-      rows: 100
+      sortOrder: sortOrderCompras.value
     })
     
     compras.value = data
@@ -326,16 +393,36 @@ const loadComprasStats = async () => {
   }
 }
 
-const loadCierres = async () => {
+const loadCierres = async (event?: any) => {
   if (!dateRangeStr.value) return
   loadingCierres.value = true
+
+  const isDataTableEvent = event && (event.first !== undefined || event.sortField !== undefined)
+  if (isDataTableEvent) {
+    if (event.first !== undefined) {
+      firstCierres.value = event.first
+    }
+    if (event.rows !== undefined) {
+      rowsCierres.value = event.rows
+    }
+    if (event.sortField) {
+      sortFieldCierres.value = event.sortField
+      sortOrderCierres.value = event.sortOrder
+    }
+  } else {
+    firstCierres.value = 0
+  }
+
+  const page = Math.floor(firstCierres.value / rowsCierres.value)
+
   try {
     const { data, total } = await fetchCierres({
       desde: dateRangeStr.value.desde.split('T')[0],
       hasta: dateRangeStr.value.hasta.split('T')[0],
+      page,
+      rows: rowsCierres.value,
       sortField: sortFieldCierres.value,
-      sortOrder: sortOrderCierres.value,
-      rows: 100
+      sortOrder: sortOrderCierres.value
     })
     cierres.value = data
     totalCierresRecords.value = total
@@ -620,8 +707,9 @@ const getCleanContadoUsd = (cierre: any) => {
 
                 <DataTable 
                    :value="ventas" 
-                   lazy paginator :rows="50" :totalRecords="totalVentasRecords" :loading="loadingVentas"
-                   @sort="e => { sortFieldVentas = e.sortField; sortOrderVentas = e.sortOrder; loadVentas() }"
+                   lazy paginator :first="firstVentas" :rows="rowsVentas" :totalRecords="totalVentasRecords" :loading="loadingVentas"
+                   @page="loadVentas"
+                   @sort="loadVentas"
                    :sortField="sortFieldVentas" :sortOrder="sortOrderVentas"
                    stripedRows class="p-datatable-sm"
                 >
@@ -688,8 +776,9 @@ const getCleanContadoUsd = (cierre: any) => {
                     <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
                  </div>
                  <DataTable 
-                    :value="cierres" lazy paginator :rows="50" :totalRecords="totalCierresRecords" :loading="loadingCierres"
-                    @sort="e => { sortFieldCierres = e.sortField; sortOrderCierres = e.sortOrder; loadCierres() }"
+                    :value="cierres" lazy paginator :first="firstCierres" :rows="rowsCierres" :totalRecords="totalCierresRecords" :loading="loadingCierres"
+                    @page="loadCierres"
+                    @sort="loadCierres"
                     :sortField="sortFieldCierres" :sortOrder="sortOrderCierres"
                     stripedRows class="p-datatable-sm"
                  >
@@ -775,8 +864,9 @@ const getCleanContadoUsd = (cierre: any) => {
                 </div>
 
                 <DataTable 
-                   :value="inventario" lazy paginator :rows="50" :totalRecords="totalInventarioRecords" :loading="loadingInventario"
-                   @sort="e => { sortFieldInventario = e.sortField; sortOrderInventario = e.sortOrder; loadInventario() }"
+                   :value="inventario" lazy paginator :first="firstInventario" :rows="rowsInventario" :totalRecords="totalInventarioRecords" :loading="loadingInventario"
+                   @page="loadInventario"
+                   @sort="loadInventario"
                    :sortField="sortFieldInventario" :sortOrder="sortOrderInventario"
                    stripedRows class="p-datatable-sm"
                 >
@@ -850,8 +940,9 @@ const getCleanContadoUsd = (cierre: any) => {
                 </div>
 
                 <DataTable 
-                   :value="compras" lazy paginator :rows="50" :totalRecords="totalComprasRecords" :loading="loadingCompras"
-                   @sort="e => { sortFieldCompras = e.sortField; sortOrderCompras = e.sortOrder; loadCompras() }"
+                   :value="compras" lazy paginator :first="firstCompras" :rows="rowsCompras" :totalRecords="totalComprasRecords" :loading="loadingCompras"
+                   @page="loadCompras"
+                   @sort="loadCompras"
                    :sortField="sortFieldCompras" :sortOrder="sortOrderCompras"
                    stripedRows class="p-datatable-sm"
                 >
