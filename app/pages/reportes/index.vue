@@ -6,6 +6,7 @@ import { useProductos } from '~/composables/useProductos'
 import { useCategoriasProductos } from '~/composables/useCategoriasProductos'
 import { useCompras } from '~/composables/useCompras'
 import { useCierresCaja, type CierreCaja } from '~/composables/useCierresCaja'
+import { useProveedores } from '~/composables/useProveedores'
 
 const client = useSupabaseClient()
 const toast = useToast()
@@ -15,6 +16,7 @@ const { fetchAllCategorias } = useCategoriasProductos()
 const { fetchAllMarcas } = useMarcas()
 const { fetchCompras, getCompraById } = useCompras()
 const { fetchCierres, fetchCierreById } = useCierresCaja()
+const { fetchProveedores } = useProveedores()
 const { isAdmin } = usePerfil()
 
 // --- ESTADOS ---
@@ -86,6 +88,7 @@ const sortOrderCompras = ref(-1)
 const firstCompras = ref(0)
 const rowsCompras = ref(50)
 const searchProveedor = ref('')
+const proveedores = ref<any[]>([])
 const incluirComprasAnuladas = ref(false)
 const comprasStats = ref({ totalGastado: 0, totalFacturas: 0 })
 const loadingComprasStats = ref(false)
@@ -457,12 +460,18 @@ const loadAuditoria = async () => {
 }
 
 const loadCategorias = async () => {
-  const [catData, marcaData] = await Promise.all([
-    fetchAllCategorias(),
-    fetchAllMarcas()
-  ])
-  categorias.value = catData
-  marcas.value = marcaData
+  try {
+    const [catData, marcaData, provResult] = await Promise.all([
+      fetchAllCategorias(),
+      fetchAllMarcas(),
+      fetchProveedores({ rows: 1000 })
+    ])
+    categorias.value = catData
+    marcas.value = marcaData
+    proveedores.value = provResult.data || []
+  } catch (err) {
+    console.error('Error cargando categorías, marcas o proveedores:', err)
+  }
 }
 
 // --- HANDLERS ---
@@ -927,11 +936,18 @@ const getCleanContadoUsd = (cierre: any) => {
                       <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Historial de Compras y Suministros</h3>
                       <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
                    </div>
-                   <div class="flex items-center gap-3">
-                     <IconField class="w-64">
-                       <InputIcon class="pi pi-search" />
-                       <InputText v-model="searchProveedor" placeholder="Buscar proveedor..." class="w-full" @input="debouncedSearchCompras" />
-                     </IconField>
+                    <div class="flex items-center gap-3">
+                      <Select
+                        v-model="searchProveedor"
+                        :options="proveedores"
+                        optionLabel="nombre"
+                        optionValue="nombre"
+                        filter
+                        showClear
+                        placeholder="Proveedor..."
+                        class="w-64"
+                        @change="loadCompras"
+                      />
                      <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg">
                         <ToggleSwitch v-model="incluirComprasAnuladas" inputId="swComprasAnuladas" @change="loadCompras()" />
                         <label for="swComprasAnuladas" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap cursor-pointer select-none">Mostrar Anuladas</label>
