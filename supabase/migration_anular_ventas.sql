@@ -49,6 +49,8 @@ DECLARE
   v_motivo TEXT;
   v_venta RECORD;
   v_detalle RECORD;
+  v_before JSONB;
+  v_after public.productos;
 BEGIN
   IF NOT is_admin() THEN
     RAISE EXCEPTION 'Solo el administrador puede anular ventas';
@@ -59,7 +61,7 @@ BEGIN
     RAISE EXCEPTION 'El motivo de anulación es obligatorio (mínimo 10 caracteres)';
   END IF;
 
-  SELECT id, anulada, cierre_id
+  SELECT id, numero, anulada, cierre_id
     INTO v_venta
     FROM ventas
     WHERE id = p_venta_id
@@ -77,15 +79,39 @@ BEGIN
     RAISE EXCEPTION 'No se puede anular: la venta ya está incluida en un cierre de caja';
   END IF;
 
-  -- Reponer stock (procesar_venta lo restó al crear la venta)
+  -- Reponer stock (procesar_venta lo restó al crear la venta) y registrar en auditoría
   FOR v_detalle IN
     SELECT producto_id, cantidad
       FROM detalle_ventas
       WHERE venta_id = p_venta_id
   LOOP
+    -- Capturar estado anterior del producto
+    SELECT to_jsonb(p.*) INTO v_before
+      FROM productos p
+      WHERE p.id = v_detalle.producto_id
+      FOR UPDATE;
+
+    -- Actualizar stock
     UPDATE productos
-      SET stock = stock + v_detalle.cantidad
-      WHERE id = v_detalle.producto_id;
+      SET stock = stock + v_detalle.cantidad,
+          updated_at = now()
+      WHERE id = v_detalle.producto_id
+      RETURNING * INTO v_after;
+
+    -- Insertar registro en auditoría de inventario
+    INSERT INTO public.inventario_auditoria (
+      producto_id, codigo_parte, nombre, accion, motivo,
+      valor_anterior, valor_nuevo, usuario_id
+    ) VALUES (
+      v_after.id,
+      v_after.codigo_parte,
+      v_after.nombre,
+      'UPDATE',
+      'ANULACIÓN VENTA NRO ' || COALESCE(v_venta.numero::text, '') || ' | Motivo: ' || v_motivo,
+      v_before,
+      to_jsonb(v_after),
+      auth.uid()
+    );
   END LOOP;
 
   UPDATE ventas
