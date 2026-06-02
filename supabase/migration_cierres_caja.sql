@@ -109,6 +109,7 @@ BEGIN
     JOIN ventas v ON v.id = vp.venta_id
     WHERE v.fecha > v_desde
       AND v.cierre_id IS NULL
+      AND v.anulada = false
     GROUP BY vp.metodo_pago_id
   ),
   ingresos_por_metodo AS (
@@ -218,6 +219,7 @@ BEGIN
       WHERE vp.metodo_pago_id = v_metodo.id
         AND v.fecha > v_desde AND v.fecha <= v_hasta
         AND v.cierre_id IS NULL
+        AND v.anulada = false
       UNION ALL
       SELECT mc.monto AS monto, mc.monto_usd AS monto_usd
       FROM movimientos_caja mc
@@ -262,10 +264,12 @@ BEGIN
       diferencia_usd = v_total_contado_usd - v_total_sistema_usd
   WHERE id = v_cierre_id;
 
-  -- Marcar ventas y movimientos como parte de este cierre
+  -- Marcar ventas (no anuladas) y movimientos como parte de este cierre
   UPDATE ventas
   SET cierre_id = v_cierre_id
-  WHERE fecha > v_desde AND fecha <= v_hasta AND cierre_id IS NULL;
+  WHERE fecha > v_desde AND fecha <= v_hasta
+    AND cierre_id IS NULL
+    AND anulada = false;
 
   UPDATE movimientos_caja
   SET cierre_id = v_cierre_id
