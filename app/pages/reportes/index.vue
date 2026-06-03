@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DollarSign, ShoppingCart, TrendingUp, Package, Users, ReceiptText, Eye, Search, AlertTriangle, Layers, ClipboardList, Wallet, Ban, RotateCcw, FilePlus, History, Pencil, Trash2 } from 'lucide-vue-next'
+import { DollarSign, ShoppingCart, TrendingUp, Package, Users, ReceiptText, Eye, Search, AlertTriangle, Layers, ClipboardList, Wallet, Ban, RotateCcw, FilePlus, History, Pencil, Trash2, Printer } from 'lucide-vue-next'
 import { useDebounceFn } from '@vueuse/core'
 import { useVentas } from '~/composables/useVentas'
 import { useProductos } from '~/composables/useProductos'
@@ -529,6 +529,14 @@ const irACorreccionVenta = (ventaId: string) => {
 
 const imprimirReporte = () => {
   window.print()
+}
+
+const isPrintingPurchaseDetail = ref(false)
+const imprimirCompraDetalle = async () => {
+  isPrintingPurchaseDetail.value = true
+  await nextTick()
+  window.print()
+  isPrintingPurchaseDetail.value = false
 }
 
 // Anulación de venta
@@ -1122,7 +1130,13 @@ const getCleanContadoUsd = (cierre: any) => {
       </div>
       <ReportesCompraDetalleRecibo v-else-if="selectedPurchase" :compra="selectedPurchase" />
       <template #footer>
-        <Button label="Cerrar" text severity="secondary" @click="purchaseDetailsModal = false" class="mt-2" />
+        <div class="flex justify-between items-center w-full mt-2">
+          <Button severity="info" outlined @click="imprimirCompraDetalle" class="flex items-center gap-2">
+            <Printer class="w-4 h-4" />
+            <span>Imprimir</span>
+          </Button>
+          <Button label="Cerrar" text severity="secondary" @click="purchaseDetailsModal = false" />
+        </div>
       </template>
     </Dialog>
 
@@ -1270,29 +1284,34 @@ const getCleanContadoUsd = (cierre: any) => {
 
      <!-- REPORTES IMPRIMIBLES -->
      <div class="hidden print:block">
-         <div v-show="activeTab === 'ventas'">
-             <ReportesVentasResumenReport 
-                :ventas="ventas" 
-                :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchCliente }" 
-             />
+         <div v-if="selectedPurchase && isPrintingPurchaseDetail">
+             <ReportesCompraDetalleReport :compra="selectedPurchase" />
          </div>
-         <div v-show="activeTab === 'cierres'">
-             <ReportesCierresHistorialReport 
-                :cierres="cierres" 
-                :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta }" 
-             />
-         </div>
-         <div v-show="activeTab === 'inventario'">
-             <InventarioChecklistReport 
-                :productos="inventario" 
-                :filtros="{ search: searchProducto, categoria: categorias.find(c => c.id === categoriaId)?.nombre }" 
-             />
-         </div>
-         <div v-show="activeTab === 'compras'">
-             <ReportesComprasResumenReport 
-                :compras="compras" 
-                :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchProveedor }" 
-             />
+         <div v-else>
+             <div v-show="activeTab === 'ventas'">
+                 <ReportesVentasResumenReport 
+                    :ventas="ventas" 
+                    :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchCliente }" 
+                 />
+             </div>
+             <div v-show="activeTab === 'cierres'">
+                 <ReportesCierresHistorialReport 
+                    :cierres="cierres" 
+                    :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta }" 
+                 />
+             </div>
+             <div v-show="activeTab === 'inventario'">
+                 <InventarioChecklistReport 
+                    :productos="inventario" 
+                    :filtros="{ search: searchProducto, categoria: categorias.find(c => c.id === categoriaId)?.nombre }" 
+                 />
+             </div>
+             <div v-show="activeTab === 'compras'">
+                 <ReportesComprasResumenReport 
+                    :compras="compras" 
+                    :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchProveedor }" 
+                 />
+             </div>
          </div>
      </div>
   </div>
