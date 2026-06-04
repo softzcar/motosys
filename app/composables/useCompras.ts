@@ -226,10 +226,47 @@ export const useCompras = () => {
     if (error) throw error
   }
 
+  const actualizarCompra = async (
+    id: string,
+    compra: {
+      numero_factura: string
+      fecha: string
+      id_proveedor: string
+      descuento: number
+      subtotal: number
+      iva: number
+      total: number
+    },
+    detalles: DetalleCompra[]
+  ) => {
+    const detallesFormateados = detalles.map(d => ({
+      id_producto: d.id_producto,
+      cantidad: d.cantidad,
+      costo_unitario: d.costo_unitario,
+      subtotal: d.subtotal
+    }))
+
+    const { data, error } = await client.rpc('editar_compra', {
+      p_compra_id: id,
+      p_numero_factura: compra.numero_factura,
+      p_fecha: compra.fecha,
+      p_id_proveedor: compra.id_proveedor,
+      p_descuento: compra.descuento || 0,
+      p_subtotal: compra.subtotal,
+      p_iva: compra.iva,
+      p_total: compra.total,
+      p_detalles: detallesFormateados
+    })
+
+    if (error) throw error
+    return data
+  }
+
   return {
     fetchCompras,
     registrarCompra,
     getCompraById,
-    anularCompra
+    anularCompra,
+    actualizarCompra
   }
 }

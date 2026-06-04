@@ -2,7 +2,7 @@
 import { useCompras, type Compra } from '~/composables/useCompras'
 import { useToast } from 'primevue/usetoast'
 import { FilterMatchMode } from '@primevue/core/api'
-import { Eye, ReceiptText, Ban, AlertTriangle, FilePlus, RotateCcw, Plus } from 'lucide-vue-next'
+import { Eye, ReceiptText, Ban, AlertTriangle, FilePlus, RotateCcw, Plus, Pencil } from 'lucide-vue-next'
 
 const { fetchCompras, getCompraById, anularCompra } = useCompras()
 const toast = useToast()
@@ -233,6 +233,14 @@ const formatDateTime = (dateString: string) => {
             >
               <Eye :size="18" />
             </button>
+            <NuxtLink
+              v-if="!slotProps.data.anulada"
+              :to="`/compras/editar?id=${slotProps.data.id}`"
+              class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition inline-flex items-center"
+              title="Editar compra"
+            >
+              <Pencil :size="18" />
+            </NuxtLink>
             <button
               v-if="isAdmin && !slotProps.data.anulada"
               @click="openAnular(slotProps.data)"

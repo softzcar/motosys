@@ -24,3 +24,6 @@ logs
 !.env.example
 
 .continue/
+backups/
+scratch/
+supabase/.temp/
