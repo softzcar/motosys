@@ -412,13 +412,60 @@ const finalizarVenta = async () => {
         }
 
         const items = cart.toRpcPayload()
-        const payloadPagos = pagos.value.map(p => ({
-            metodo_pago_id: p.metodo_pago_id,
-            monto_recibido: p.monto_recibido,
-            tasa_aplicada: p.tasa_aplicada,
-            monto_usd: p.monto_usd,
-            referencia: p.referencia ?? null
-        }))
+        // Ajustar vuelto de los pagos
+        let vueltoRestante = vueltoUsd.value
+        const pagosAjustados = JSON.parse(JSON.stringify(pagos.value))
+
+        if (vueltoRestante > 0) {
+            // Priorizar restar el vuelto de los métodos de Efectivo
+            const indicesEfectivo = pagosAjustados
+                .map((p: any, idx: number) => ({ p, idx }))
+                .filter((item: any) => item.p.nombre.toLowerCase().includes('efectivo'))
+                .map((item: any) => item.idx)
+                
+            for (const idx of indicesEfectivo) {
+                if (vueltoRestante <= 0) break
+                const pago = pagosAjustados[idx]
+                if (pago.monto_usd >= vueltoRestante) {
+                    pago.monto_usd -= vueltoRestante
+                    pago.monto_recibido = pago.monto_usd * pago.tasa_aplicada
+                    vueltoRestante = 0
+                } else {
+                    vueltoRestante -= pago.monto_usd
+                    pago.monto_usd = 0
+                    pago.monto_recibido = 0
+                }
+            }
+        }
+
+        // Si aún queda vuelto, restarlo del resto de los pagos (en orden inverso)
+        if (vueltoRestante > 0) {
+            for (let i = pagosAjustados.length - 1; i >= 0; i--) {
+                if (vueltoRestante <= 0) break
+                const pago = pagosAjustados[i]
+                if (pago.monto_usd <= 0) continue
+                
+                if (pago.monto_usd >= vueltoRestante) {
+                    pago.monto_usd -= vueltoRestante
+                    pago.monto_recibido = pago.monto_usd * pago.tasa_aplicada
+                    vueltoRestante = 0
+                } else {
+                    vueltoRestante -= pago.monto_usd
+                    pago.monto_usd = 0
+                    pago.monto_recibido = 0
+                }
+            }
+        }
+
+        const payloadPagos = pagosAjustados
+            .filter((p: any) => p.monto_usd > 0)
+            .map((p: any) => ({
+                metodo_pago_id: p.metodo_pago_id,
+                monto_recibido: Number(p.monto_recibido.toFixed(2)),
+                tasa_aplicada: p.tasa_aplicada,
+                monto_usd: Number(p.monto_usd.toFixed(2)),
+                referencia: p.referencia ?? null
+            }))
 
         let ventaId = null
         let numFactura = '---'
