@@ -21,9 +21,13 @@ export const useProductos = () => {
     const from = page * rows
     const to = from + rows - 1
 
+    const selectStr = opts?.proveedorId
+      ? '*, categorias_productos(nombre), marcas!marca_id(nombre), detalle_compras!inner(compras!inner(id_proveedor, anulada))'
+      : '*, categorias_productos(nombre), marcas!marca_id(nombre)'
+
     let query = client
       .from('productos')
-      .select('*, categorias_productos(nombre), marcas!marca_id(nombre)', { count: 'exact' })
+      .select(selectStr, { count: 'exact' })
 
     // Ordenamiento
     const sortField = opts?.sortField || 'nombre'
@@ -56,19 +60,9 @@ export const useProductos = () => {
     }
 
     if (opts?.proveedorId) {
-      const { data: details, error: detailsError } = await client
-        .from('detalle_compras')
-        .select('id_producto, compras!inner(id_proveedor, anulada)')
-        .eq('compras.id_proveedor', opts.proveedorId)
-        .eq('compras.anulada', false)
-
-      if (detailsError) throw detailsError
-
-      const productIds = Array.from(new Set(details.map(d => d.id_producto)))
-      if (productIds.length === 0) {
-        return { data: [], total: 0 }
-      }
-      query = query.in('id', productIds)
+      query = query
+        .eq('detalle_compras.compras.id_proveedor', opts.proveedorId)
+        .eq('detalle_compras.compras.anulada', false)
     }
 
     if (opts?.search) {
