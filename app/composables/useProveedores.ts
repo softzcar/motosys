@@ -45,6 +45,16 @@ export const useProveedores = () => {
     return { data: data as Proveedor[], total: count ?? 0 }
   }
 
+  const fetchAllProveedores = async () => {
+    const { data, error } = await client
+      .from('proveedores')
+      .select('*')
+      .order('nombre', { ascending: true })
+
+    if (error) throw error
+    return data as Proveedor[]
+  }
+
   const crearProveedor = async (proveedor: Omit<Proveedor, 'id' | 'created_at' | 'updated_at' | 'activo'>) => {
     const { data, error } = await client
       .from('proveedores')
@@ -85,8 +95,10 @@ export const useProveedores = () => {
 
   return {
     fetchProveedores,
+    fetchAllProveedores,
     crearProveedor,
     actualizarProveedor,
     eliminarProveedor
   }
 }
+

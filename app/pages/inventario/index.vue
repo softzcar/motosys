@@ -4,6 +4,7 @@ import type { Producto, CategoriaProducto, Marca } from '~/types/database'
 const { fetchProductos, fetchUbicaciones, eliminarProductoConMotivo, friendlyError } = useProductos()
 const { fetchAllCategorias } = useCategoriasProductos()
 const { fetchAllMarcas } = useMarcas()
+const { fetchAllProveedores } = useProveedores()
 const { isAdmin } = usePerfil()
 const toast = useToast()
 
@@ -16,8 +17,10 @@ const sortField = ref('nombre')
 const sortOrder = ref(1)
 const categorias = ref<CategoriaProducto[]>([])
 const marcas = ref<Marca[]>([])
+const proveedores = ref<any[]>([])
 const selectedCategoriaId = ref<string | null>(null)
 const selectedMarcaId = ref<string | null>(null)
+const selectedProveedorId = ref<string | null>(null)
 const selectedUbicacion = ref<string | null>(null)
 const ubicaciones = ref<string[]>([])
 const soloActivos = ref(true)
@@ -48,6 +51,14 @@ const loadMarcas = async () => {
   }
 }
 
+const loadProveedores = async () => {
+  try {
+    proveedores.value = await fetchAllProveedores()
+  } catch {
+    proveedores.value = []
+  }
+}
+
 const loadProductos = async () => {
   loading.value = true
   try {
@@ -59,6 +70,7 @@ const loadProductos = async () => {
       sortOrder: sortOrder.value,
       categoriaId: selectedCategoriaId.value,
       marcaId: selectedMarcaId.value,
+      proveedorId: selectedProveedorId.value,
       ubicacion: selectedUbicacion.value,
       soloActivos: soloActivos.value
     })
@@ -99,6 +111,12 @@ const handleFilterCategoria = (id: string | null) => {
 
 const handleFilterMarca = (id: string | null) => {
   selectedMarcaId.value = id
+  currentPage.value = 0
+  loadProductos()
+}
+
+const handleFilterProveedor = (id: string | null) => {
+  selectedProveedorId.value = id
   currentPage.value = 0
   loadProductos()
 }
@@ -156,7 +174,8 @@ const confirmarEliminacion = async () => {
 onMounted(async () => {
   await Promise.all([
     loadCategorias(),
-    loadMarcas()
+    loadMarcas(),
+    loadProveedores()
   ])
   await loadProductos()
 })
@@ -188,8 +207,10 @@ onMounted(async () => {
       :sort-order="sortOrder"
       :categorias="categorias"
       :marcas="marcas"
+      :proveedores="proveedores"
       :selected-categoria-id="selectedCategoriaId"
       :selected-marca-id="selectedMarcaId"
+      :selected-proveedor-id="selectedProveedorId"
       :ubicaciones="ubicaciones"
       :selected-ubicacion="selectedUbicacion"
       :solo-activos="soloActivos"
@@ -200,6 +221,7 @@ onMounted(async () => {
       @delete="handleDelete"
       @filter-categoria="handleFilterCategoria"
       @filter-marca="handleFilterMarca"
+      @filter-proveedor="handleFilterProveedor"
       @filter-ubicacion="handleFilterUbicacion"
       @filter-activos="handleFilterActivos"
     />
@@ -255,6 +277,7 @@ onMounted(async () => {
         search: currentSearch,
         categoria: categorias.find(c => c.id === selectedCategoriaId)?.nombre,
         marca: marcas.find(m => m.id === selectedMarcaId)?.nombre,
+        proveedor: proveedores.find(p => p.id === selectedProveedorId)?.nombre,
         ubicacion: selectedUbicacion
       }"
     />

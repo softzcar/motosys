@@ -7,6 +7,7 @@ const props = defineProps<{
     search?: string
     categoria?: string | null
     marca?: string | null
+    proveedor?: string | null
     ubicacion?: string | null
   }
   loading?: boolean
@@ -54,11 +55,12 @@ const productosAgrupados = computed(() => {
            <p>EMITIDO: {{ formatDate(new Date()) }}</p>
            <p>
              FILTRO: 
-             <span v-if="filtros.categoria || filtros.marca || filtros.ubicacion || filtros.search">
+             <span v-if="filtros.categoria || filtros.marca || filtros.proveedor || filtros.ubicacion || filtros.search">
                {{ [
                  filtros.search ? `Búsqueda: "${filtros.search}"` : null,
                  filtros.categoria ? `Categoría: ${filtros.categoria}` : null,
                  filtros.marca ? `Marca: ${filtros.marca}` : null,
+                 filtros.proveedor ? `Proveedor: ${filtros.proveedor}` : null,
                  filtros.ubicacion ? `Ubicación: ${filtros.ubicacion}` : null
                ].filter(Boolean).join(' | ') }}
              </span>
@@ -73,11 +75,12 @@ const productosAgrupados = computed(() => {
     </div>
 
     <!-- Filtros aplicados detalle -->
-    <div v-if="filtros.categoria || filtros.marca || filtros.ubicacion || filtros.search" class="mb-4 text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
+    <div v-if="filtros.categoria || filtros.marca || filtros.proveedor || filtros.ubicacion || filtros.search" class="mb-4 text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
       <span class="font-bold uppercase mr-2">Filtros Activos:</span>
       <span v-if="filtros.search" class="mr-3">Búsqueda: "{{ filtros.search }}"</span>
       <span v-if="filtros.categoria" class="mr-3">Categoría: {{ filtros.categoria }}</span>
       <span v-if="filtros.marca" class="mr-3">Marca: {{ filtros.marca }}</span>
+      <span v-if="filtros.proveedor" class="mr-3">Proveedor: {{ filtros.proveedor }}</span>
       <span v-if="filtros.ubicacion" class="mr-3">Ubicación: {{ filtros.ubicacion }}</span>
     </div>
 

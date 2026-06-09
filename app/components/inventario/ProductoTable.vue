@@ -11,8 +11,10 @@ defineProps<{
   sortOrder?: number
   categorias: CategoriaProducto[]
   marcas: Marca[]
+  proveedores: any[]
   selectedCategoriaId?: string | null
   selectedMarcaId?: string | null
+  selectedProveedorId?: string | null
   ubicaciones?: string[]
   selectedUbicacion?: string | null
   soloActivos?: boolean
@@ -26,6 +28,7 @@ const emit = defineEmits<{
   sort: [event: { sortField: string; sortOrder: number }]
   'filter-categoria': [id: string | null]
   'filter-marca': [id: string | null]
+  'filter-proveedor': [id: string | null]
   'filter-ubicacion': [val: string | null]
   'filter-activos': [value: boolean]
 }>()
@@ -44,6 +47,10 @@ const onCategoriaChange = (value: string | null) => {
 
 const onMarcaChange = (value: string | null) => {
   emit('filter-marca', value)
+}
+
+const onProveedorChange = (value: string | null) => {
+  emit('filter-proveedor', value)
 }
 
 const onUbicacionChange = (value: string | null) => {
@@ -86,6 +93,16 @@ const onActivosChange = (event: any) => {
         show-clear
         class="w-full md:w-48"
         @update:model-value="onMarcaChange"
+      />
+      <Select
+        :model-value="selectedProveedorId"
+        :options="proveedores"
+        option-label="nombre"
+        option-value="id"
+        placeholder="Proveedor"
+        show-clear
+        class="w-full md:w-48"
+        @update:model-value="onProveedorChange"
       />
       <Select
         :model-value="selectedUbicacion"

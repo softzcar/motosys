@@ -13,6 +13,7 @@ export const useProductos = () => {
     categoriaId?: string | null
     marcaId?: string | null
     ubicacion?: string | null
+    proveedorId?: string | null
     maxStock?: number
   }) => {
     const page = opts?.page ?? 0
@@ -52,6 +53,22 @@ export const useProductos = () => {
 
     if (opts?.ubicacion) {
       query = query.eq('ubicacion', opts.ubicacion)
+    }
+
+    if (opts?.proveedorId) {
+      const { data: details, error: detailsError } = await client
+        .from('detalle_compras')
+        .select('id_producto, compras!inner(id_proveedor, anulada)')
+        .eq('compras.id_proveedor', opts.proveedorId)
+        .eq('compras.anulada', false)
+
+      if (detailsError) throw detailsError
+
+      const productIds = Array.from(new Set(details.map(d => d.id_producto)))
+      if (productIds.length === 0) {
+        return { data: [], total: 0 }
+      }
+      query = query.in('id', productIds)
     }
 
     if (opts?.search) {
