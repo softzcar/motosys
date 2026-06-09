@@ -888,6 +888,7 @@ const getCleanContadoUsd = (cierre: any) => {
                    stripedRows class="p-datatable-sm"
                 >
                    <Column field="codigo_parte" header="Código" sortable></Column>
+                   <Column field="codigo_proveedor" header="Cód. Proveedor" sortable></Column>
                    <Column field="nombre" header="Producto" sortable></Column>
                    <Column header="Marca" field="marca_id" sortable>
                      <template #body="{ data }">

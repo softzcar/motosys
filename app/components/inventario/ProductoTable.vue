@@ -135,6 +135,7 @@ const onActivosChange = (event: any) => {
       @sort="emit('sort', $event)"
     >
       <Column field="codigo_parte" header="Código" sortable />
+      <Column field="codigo_proveedor" header="Cód. Proveedor" sortable />
       <Column field="nombre" header="Nombre" sortable />
       <Column header="Marca" sortable field="marca_id">
         <template #body="{ data }">

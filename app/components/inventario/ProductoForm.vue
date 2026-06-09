@@ -39,6 +39,7 @@ const marcaModalError = ref('')
 const form = ref({
   nombre: props.producto?.nombre ?? '',
   codigo_parte: props.producto?.codigo_parte ?? '',
+  codigo_proveedor: props.producto?.codigo_proveedor ?? '',
   stock: props.producto?.stock ?? 0,
   precio_venta: props.producto?.precio_venta ?? 0,
   categoria_id: props.producto?.categoria_id ?? null as string | null,
@@ -53,6 +54,7 @@ watch(() => props.producto, (p) => {
     form.value = {
       nombre: p.nombre,
       codigo_parte: p.codigo_parte,
+      codigo_proveedor: p.codigo_proveedor ?? '',
       stock: p.stock,
       precio_venta: p.precio_venta,
       categoria_id: p.categoria_id,
@@ -228,6 +230,7 @@ const handleSubmit = () => {
     values: {
       nombre: form.value.nombre.trim(),
       codigo_parte: form.value.codigo_parte.trim(),
+      codigo_proveedor: form.value.codigo_proveedor.trim() || null,
       // Si está oculto y es nuevo, forzamos 0. De lo contrario usamos el valor del form.
       stock: (props.hideStock && !props.producto) ? 0 : (form.value.stock as number),
       precio_venta: form.value.precio_venta as number,
@@ -296,6 +299,19 @@ const handleSubmit = () => {
         :disabled="!form.activo"
       />
       <small v-if="errors.codigo_parte" class="text-red-600">{{ errors.codigo_parte }}</small>
+    </div>
+
+    <!-- Código Proveedor -->
+    <div class="flex flex-col gap-1.5">
+      <label for="codigo_proveedor" class="text-sm font-medium text-slate-700">
+        Código de Proveedor <span class="text-slate-400 text-xs font-normal">(Opcional)</span>
+      </label>
+      <InputText
+        id="codigo_proveedor"
+        v-model="form.codigo_proveedor"
+        placeholder="Ej: PROV-12345"
+        :disabled="!form.activo"
+      />
     </div>
 
     <!-- Ubicación -->

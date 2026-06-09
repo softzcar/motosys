@@ -25,6 +25,7 @@ export interface Producto {
   id: string
   nombre: string
   codigo_parte: string
+  codigo_proveedor?: string | null
   stock: number
   precio_venta: number
   imagen_url: string | null

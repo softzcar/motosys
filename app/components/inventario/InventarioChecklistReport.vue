@@ -102,7 +102,12 @@ const productosAgrupados = computed(() => {
         </thead>
         <tbody>
           <tr v-for="p in items" :key="p.id" class="border-b border-slate-200 page-break-inside-avoid">
-            <td class="p-1 text-[9px] font-bold text-slate-600 border-r border-slate-200">{{ p.codigo_parte }}</td>
+            <td class="p-1 text-[9px] font-bold text-slate-600 border-r border-slate-200">
+               <div>{{ p.codigo_parte }}</div>
+               <div v-if="p.codigo_proveedor" class="text-[7px] text-slate-400 font-medium leading-none mt-0.5">
+                 P: {{ p.codigo_proveedor }}
+               </div>
+            </td>
             <td class="p-1 text-[10px] font-medium leading-tight border-r border-slate-200">
                {{ p.nombre }}
                <span v-if="!filtros.marca && p.marcas?.nombre" class="text-[7px] text-slate-900 font-bold uppercase ml-1">
