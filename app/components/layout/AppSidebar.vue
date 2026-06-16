@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { markRaw } from 'vue'
-import { Package, ShoppingCart, BarChart3, Settings, Users, LayoutDashboard, UserSquare, Truck, FileText, Wallet, X } from 'lucide-vue-next'
+import { Package, ShoppingCart, BarChart3, Settings, Users, LayoutDashboard, UserSquare, Truck, FileText, Wallet, X, ClipboardCheck } from 'lucide-vue-next'
 import { useNetworkStore } from '~/stores/network'
 
 const { isAdmin } = usePerfil()
@@ -28,6 +28,7 @@ const menuItems = computed(() => {
     { label: 'Clientes', icon: markRaw(UserSquare), to: '/clientes' },
     { label: 'Empleados', icon: markRaw(Users), to: '/empleados' },
     { label: 'Reportes', icon: markRaw(BarChart3), to: '/reportes' },
+    { label: 'Auditoría', icon: markRaw(ClipboardCheck), to: '/auditoria' },
     { label: 'Configuración', icon: markRaw(Settings), to: '/configuracion' }
   ]
 })
