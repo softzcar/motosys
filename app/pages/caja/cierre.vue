@@ -31,16 +31,17 @@ const tasaParaMoneda = (moneda: string) => {
 const filasCierre = computed(() => {
   return preview.value.map(p => {
     const contado = contados.value[p.metodo_pago_id] ?? 0
-    const tasa = tasaParaMoneda(p.moneda)
+    const tasa = (Math.abs(Number(p.monto_sistema_usd)) > 0.01)
+      ? Number(p.monto_sistema) / Number(p.monto_sistema_usd)
+      : tasaParaMoneda(p.moneda)
     const contadoUsd = p.moneda === 'USD' ? contado : (tasa > 0 ? contado / tasa : 0)
     const diferencia = contado - Number(p.monto_sistema)
-    // Para evitar discrepancias por tasas históricas, calculamos la diferencia USD basándonos en la diferencia BS / Tasa actual
     const diferenciaUsd = p.moneda === 'USD' ? diferencia : (tasa > 0 ? diferencia / tasa : 0)
     return { ...p, contado, tasa, contadoUsd, diferencia, diferenciaUsd }
   })
 })
 
-const totalSistemaUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + (f.moneda === 'USD' ? Number(f.monto_sistema) : (f.tasa > 0 ? Number(f.monto_sistema) / f.tasa : 0)), 0))
+const totalSistemaUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + Number(f.monto_sistema_usd), 0))
 const totalContadoUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + f.contadoUsd, 0))
 const totalDiferenciaUsd = computed(() => filasCierre.value.reduce((acc, f) => acc + f.diferenciaUsd, 0))
 
@@ -48,11 +49,10 @@ const chartData = computed(() => {
   const total = totalSistemaUsd.value || 1
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
   return filasCierre.value
-    .filter(f => Number(f.monto_sistema) > 0)
-    .sort((a, b) => (Number(b.monto_sistema) / (tasaParaMoneda(b.moneda) || 1)) - (Number(a.monto_sistema) / (tasaParaMoneda(a.moneda) || 1)))
+    .filter(f => Number(f.monto_sistema_usd) > 0)
+    .sort((a, b) => Number(b.monto_sistema_usd) - Number(a.monto_sistema_usd))
     .map((f, i) => {
-      const tasa = tasaParaMoneda(f.moneda)
-      const valorUsd = f.moneda === 'USD' ? Number(f.monto_sistema) : (tasa > 0 ? Number(f.monto_sistema) / tasa : 0)
+      const valorUsd = Number(f.monto_sistema_usd)
       const porcentaje = (valorUsd / total) * 100
       return {
         nombre: f.nombre,

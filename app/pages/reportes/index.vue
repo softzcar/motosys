@@ -604,22 +604,12 @@ const formatDateTime = (dateString: string) => {
 // Funciones para limpiar totales (Recalcula al vuelo para evitar ruidos de la DB)
 const getCleanSistemaUsd = (cierre: any) => {
   if (!cierre?.cierres_caja_detalle) return Number(cierre?.total_sistema_usd || 0)
-  return cierre.cierres_caja_detalle.reduce((acc: number, d: any) => {
-    const tasa = Number(d.tasa_referencia) || 1
-    const monto = Number(d.monto_sistema)
-    const valorUsd = d.metodos_pago?.moneda === 'USD' ? monto : (monto / tasa)
-    return acc + valorUsd
-  }, 0)
+  return cierre.cierres_caja_detalle.reduce((acc: number, d: any) => acc + Number(d.monto_sistema_usd || 0), 0)
 }
 
 const getCleanContadoUsd = (cierre: any) => {
   if (!cierre?.cierres_caja_detalle) return Number(cierre?.total_contado_usd || 0)
-  return cierre.cierres_caja_detalle.reduce((acc: number, d: any) => {
-    const tasa = Number(d.tasa_referencia) || 1
-    const monto = Number(d.monto_contado)
-    const valorUsd = d.metodos_pago?.moneda === 'USD' ? monto : (monto / tasa)
-    return acc + valorUsd
-  }, 0)
+  return cierre.cierres_caja_detalle.reduce((acc: number, d: any) => acc + Number(d.monto_contado_usd || 0), 0)
 }
 </script>
 
