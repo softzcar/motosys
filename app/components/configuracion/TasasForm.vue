@@ -39,11 +39,14 @@ const executeSyncBcv = async () => {
 const saveManualRates = async () => {
     savingTasas.value = true
     try {
-        const manualRates = tasas.value.filter(t => !t.is_auto)
-        for (const rate of manualRates) {
-            await updateTasa(rate.codigo, Number(rate.tasa))
+        for (const rate of tasas.value) {
+            await updateTasa(rate.codigo, Number(rate.tasa), rate.is_auto)
         }
-        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Tasas manuales actualizadas correctamente', life: 3000 })
+        // Si la tasa BCV está en automático, intentamos sincronizarla de una vez
+        if (tasas.value.some(t => t.codigo === 'BCV' && t.is_auto)) {
+            await syncBcvRate().catch(() => {})
+        }
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Tasas de cambio actualizadas correctamente', life: 3000 })
         await loadTasas()
         emit('updated')
     } catch (e: any) {
@@ -105,9 +108,16 @@ onMounted(() => {
                  </span>
               </div>
               
-              <div class="min-h-[1rem]">
-                <p v-if="tasa.is_auto" class="text-[9px] text-slate-400 text-center italic">
-                   Tasa bloqueada. Sincroniza desde el botón superior.
+              <div class="min-h-[2.5rem] flex flex-col justify-center border-t border-slate-100 pt-2">
+                <div v-if="tasa.codigo === 'BCV'" class="flex items-center justify-between">
+                   <span class="text-[10px] font-bold text-slate-400 uppercase">Actualización:</span>
+                   <div class="flex items-center gap-2">
+                      <ToggleSwitch v-model="tasa.is_auto" />
+                      <span class="text-[10px] font-black uppercase text-slate-600">{{ tasa.is_auto ? 'Auto' : 'Manual' }}</span>
+                   </div>
+                </div>
+                <p v-else class="text-[9px] text-slate-400 text-center italic">
+                   Configuración manual de tasa de cambio.
                 </p>
               </div>
            </div>

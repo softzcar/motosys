@@ -17,6 +17,17 @@ export const useTasas = () => {
     if (import.meta.client && !navigator.onLine) return;
     
     try {
+      const { data: currentBcv } = await client
+        .from('tasas_cambio')
+        .select('is_auto')
+        .eq('codigo', 'BCV')
+        .maybeSingle()
+
+      if (currentBcv && currentBcv.is_auto === false) {
+        // Si el usuario configuró la tasa en manual, no la sobrescribimos automáticamente
+        return
+      }
+
       const response = await fetch('https://ve.dolarapi.com/v1/dolares')
       const data = await response.json()
       
@@ -82,14 +93,19 @@ export const useTasas = () => {
     }
   }
 
-  // Actualiza una tasa manual (ej. Paralelo o COP)
-  const updateTasa = async (codigo: string, tasaValue: number) => {
+  // Actualiza una tasa manual o su modo de actualización (is_auto)
+  const updateTasa = async (codigo: string, tasaValue: number, isAuto?: boolean) => {
+    const updateData: any = {
+       tasa: tasaValue,
+       updated_at: new Date().toISOString()
+    }
+    if (isAuto !== undefined) {
+      updateData.is_auto = isAuto
+    }
+    
     const { data, error } = await client
       .from('tasas_cambio')
-      .update({
-         tasa: tasaValue,
-         updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('codigo', codigo)
       .select()
       .single()
