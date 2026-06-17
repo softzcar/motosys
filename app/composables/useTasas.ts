@@ -11,11 +11,11 @@ export interface TasaCambio {
 export const useTasas = () => {
   const client = useSupabaseClient()
 
-  // Sincroniza la tasa oficial del BCV llamando a la API
+  // Sincroniza la tasa oficial del BCV vía nuestro endpoint interno (scraping directo a bcv.org.ve)
   const syncBcvRate = async () => {
     // Si estamos offline, no intentamos sincronizar para evitar errores
     if (import.meta.client && !navigator.onLine) return;
-    
+
     try {
       const { data: currentBcv } = await client
         .from('tasas_cambio')
@@ -28,13 +28,10 @@ export const useTasas = () => {
         return
       }
 
-      const response = await fetch('https://ve.dolarapi.com/v1/dolares')
-      const data = await response.json()
-      
-      const bcvData = data.find((d: any) => d.fuente === 'oficial')
-      
-      if (bcvData && bcvData.promedio) {
-        const roundedRate = Number(bcvData.promedio.toFixed(2))
+      const data = await $fetch<{ tasa: number }>('/api/tasas/bcv')
+
+      if (data && typeof data.tasa === 'number') {
+        const roundedRate = Number(data.tasa.toFixed(2))
 
         // Usar upsert para crear si no existe
         await client
