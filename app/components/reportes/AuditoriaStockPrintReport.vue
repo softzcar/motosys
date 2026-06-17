@@ -35,7 +35,7 @@ const formatDateTime = (date: Date) => {
 
 // Calcular totales
 const totalItemsCount = computed(() => props.items.length)
-const totalDiscrepancias = computed(() => props.items.filter(i => (i.stock_real_periodo - (i.stock_inicial + i.compras_periodo - i.ventas_periodo + i.ajustes_periodo)) !== 0).length)
+const totalDiscrepancias = computed(() => props.items.filter(i => (i.stock_real_periodo - (i.stock_inicial + i.compras_periodo - i.ventas_periodo)) !== 0).length)
 
 const totalCompras = computed(() => props.items.reduce((acc, i) => acc + i.compras_periodo, 0))
 const totalVentas = computed(() => props.items.reduce((acc, i) => acc + i.ventas_periodo, 0))
@@ -141,13 +141,13 @@ const totalAjustes = computed(() => props.items.reduce((acc, i) => acc + i.ajust
             {{ p.ajustes_periodo > 0 ? `+${p.ajustes_periodo}` : p.ajustes_periodo }}
           </td>
           <td class="p-1 text-center text-[10px] font-black bg-blue-50/20 border-r border-slate-200">
-            {{ p.stock_inicial + p.compras_periodo - p.ventas_periodo + p.ajustes_periodo }}
+            {{ p.stock_inicial + p.compras_periodo - p.ventas_periodo }}
           </td>
           <td class="p-1 text-center text-[10px] font-black bg-slate-50/20 border-r border-slate-200">
             {{ p.stock_real_periodo }}
           </td>
-          <td class="p-1 text-center text-[10px] font-black" :class="(p.stock_real_periodo - (p.stock_inicial + p.compras_periodo - p.ventas_periodo + p.ajustes_periodo)) !== 0 ? 'text-rose-700 bg-rose-50' : 'text-slate-400'">
-            {{ p.stock_real_periodo - (p.stock_inicial + p.compras_periodo - p.ventas_periodo + p.ajustes_periodo) }}
+          <td class="p-1 text-center text-[10px] font-black" :class="(p.stock_real_periodo - (p.stock_inicial + p.compras_periodo - p.ventas_periodo)) !== 0 ? 'text-rose-700 bg-rose-50' : 'text-slate-400'">
+            {{ p.stock_real_periodo - (p.stock_inicial + p.compras_periodo - p.ventas_periodo) }}
           </td>
         </tr>
       </tbody>

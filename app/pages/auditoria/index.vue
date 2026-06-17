@@ -172,7 +172,7 @@ const filteredItems = computed(() => {
     }
 
     if (soloDiscrepancias.value) {
-      const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo + item.ajustes_periodo
+      const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo
       const diff = item.stock_real_periodo - esperado
       if (diff === 0) return false
     }
@@ -195,7 +195,7 @@ const stats = computed(() => {
   let totalAj = 0
 
   filteredItems.value.forEach(item => {
-    const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo + item.ajustes_periodo
+    const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo
     const diff = item.stock_real_periodo - esperado
     if (diff !== 0) discrepanciasCount++
     
@@ -218,7 +218,7 @@ const stats = computed(() => {
 
 const corregirStock = (item: AuditoriaStockItem) => {
   productoACorregir.value = item
-  const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo + item.ajustes_periodo
+  const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo
   cantidadCorregir.value = esperado
   motivoCorregir.value = 'Corregido por auditoría'
   corregirModal.value = true
@@ -497,11 +497,14 @@ const formatDateTime = (dateStr: string) => {
                 />
               </div>
 
-              <div class="flex items-center gap-2">
-                <ToggleSwitch v-model="soloDiscrepancias" id="soloDiscrepancias" />
-                <label for="soloDiscrepancias" class="text-xs font-bold text-slate-600 cursor-pointer select-none">
-                  Mostrar solo discrepancias
-                </label>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                  <ToggleSwitch v-model="soloDiscrepancias" id="soloDiscrepancias" />
+                  <label for="soloDiscrepancias" class="text-xs font-bold text-slate-600 cursor-pointer select-none">
+                    Mostrar solo discrepancias
+                  </label>
+                </div>
+                <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
               </div>
             </div>
 
@@ -561,7 +564,7 @@ const formatDateTime = (dateStr: string) => {
 
                 <Column header="Debería Haber" class="text-center w-32 bg-blue-50/20 font-bold text-slate-700">
                   <template #body="slotProps">
-                    {{ slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo + slotProps.data.ajustes_periodo }}
+                    {{ slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo }}
                   </template>
                 </Column>
 
@@ -570,10 +573,10 @@ const formatDateTime = (dateStr: string) => {
                 <Column header="Diferencia" class="text-center w-28 font-bold">
                   <template #body="slotProps">
                     <div 
-                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo + slotProps.data.ajustes_periodo)) !== 0"
+                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo)) !== 0"
                       class="px-2 py-1 bg-rose-50 text-rose-700 rounded-md font-black"
                     >
-                      {{ slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo + slotProps.data.ajustes_periodo) }}
+                      {{ slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo) }}
                     </div>
                     <div class="text-slate-400" v-else>
                       0
@@ -584,7 +587,7 @@ const formatDateTime = (dateStr: string) => {
                 <Column header="Estado" class="text-center w-24">
                   <template #body="slotProps">
                     <Tag 
-                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo + slotProps.data.ajustes_periodo)) !== 0"
+                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo)) !== 0"
                       severity="danger" 
                       value="Falla" 
                     />
@@ -599,7 +602,7 @@ const formatDateTime = (dateStr: string) => {
                 <Column :exportable="false" header="Acciones" class="text-center w-24">
                   <template #body="slotProps">
                     <Button 
-                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo + slotProps.data.ajustes_periodo)) !== 0"
+                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo)) !== 0"
                       severity="success" 
                       rounded 
                       text
@@ -841,7 +844,7 @@ const formatDateTime = (dateStr: string) => {
           <p class="text-slate-500 text-[10px]">Código/SKU: <span class="font-semibold text-slate-700">{{ productoACorregir.codigo_parte }}</span></p>
           <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200 text-slate-600 text-[11px]">
             <div>Stock Real actual: <span class="font-bold text-slate-800">{{ productoACorregir.stock_real_periodo }}</span></div>
-            <div>Debería Haber: <span class="font-bold text-slate-800">{{ productoACorregir.stock_inicial + productoACorregir.compras_periodo - productoACorregir.ventas_periodo + productoACorregir.ajustes_periodo }}</span></div>
+            <div>Debería Haber: <span class="font-bold text-slate-800">{{ productoACorregir.stock_inicial + productoACorregir.compras_periodo - productoACorregir.ventas_periodo }}</span></div>
           </div>
         </div>
 
