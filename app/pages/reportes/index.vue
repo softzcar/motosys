@@ -594,7 +594,10 @@ const formatCurrency = (value: number) => {
 }
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('es-VE')
+  if (!dateString) return ''
+  // Date-only strings (yyyy-mm-dd) must be parsed as local time to avoid UTC offset
+  const [y, m, d] = dateString.substring(0, 10).split('-')
+  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('es-VE')
 }
 
 const formatDateTime = (dateString: string) => {
@@ -791,7 +794,7 @@ const getCleanContadoUsd = (cierre: any) => {
                  >
                     <Column field="fecha" header="Fecha de Cierre" sortable>
                        <template #body="slotProps">
-                          {{ formatDateTime(slotProps.data.fecha) }}
+                          {{ formatDate(slotProps.data.fecha) }}
                        </template>
                     </Column>
                     <Column field="responsable.nombre" header="Cajero">
