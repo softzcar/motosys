@@ -14,8 +14,40 @@ export interface AuditoriaStockItem {
   marca_id: string | null
 }
 
+export interface CompraDetalleAuditoria {
+  cantidad: number
+  compras: {
+    id: string
+    numero: number
+    numero_factura: string | null
+    fecha: string
+    total: number
+    proveedores: { nombre: string } | null
+  }
+}
+
 export const useAuditoria = () => {
   const client = useSupabaseClient()
+
+  const fetchComprasProducto = async (productoId: string, desde: string, hasta: string) => {
+    const { data, error } = await client
+      .from('detalle_compras')
+      .select(`
+        cantidad,
+        compras:id_compra!inner (
+          id, numero, numero_factura, fecha, total,
+          proveedores:id_proveedor (nombre)
+        )
+      `)
+      .eq('id_producto', productoId)
+      .eq('compras.anulada', false)
+      .gte('compras.fecha', desde.substring(0, 10))
+      .lte('compras.fecha', hasta.substring(0, 10))
+      .order('compras(fecha)', { ascending: false })
+
+    if (error) throw error
+    return (data || []) as CompraDetalleAuditoria[]
+  }
 
   const fetchAuditoriaStock = async (desde: string, hasta: string) => {
     const { data, error } = await client.rpc('obtener_auditoria_inventario', {
@@ -49,6 +81,7 @@ export const useAuditoria = () => {
 
   return {
     fetchAuditoriaStock,
-    fetchAuditoriaPagos
+    fetchAuditoriaPagos,
+    fetchComprasProducto
   }
 }

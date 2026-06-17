@@ -9,7 +9,7 @@ const props = defineProps<{
     search?: string
     categoria?: string | null
     marca?: string | null
-    soloDiscrepancias?: boolean
+    filtroEstado?: string
     proveedor?: string | null
   }
 }>()
@@ -58,13 +58,13 @@ const totalAjustes = computed(() => props.items.reduce((acc, i) => acc + i.ajust
            </p>
            <p>
              FILTROS: 
-             <span v-if="filtros.categoria || filtros.marca || filtros.search || filtros.soloDiscrepancias || filtros.proveedor">
+             <span v-if="filtros.categoria || filtros.marca || filtros.search || filtros.filtroEstado !== 'todos' || filtros.proveedor">
                {{ [
                  filtros.search ? `Búsqueda: "${filtros.search}"` : null,
                  filtros.categoria ? `Categoría: ${filtros.categoria}` : null,
                  filtros.marca ? `Marca: ${filtros.marca}` : null,
                  filtros.proveedor ? `Proveedor: ${filtros.proveedor}` : null,
-                 filtros.soloDiscrepancias ? 'Solo Discrepancias' : null
+                 filtros.filtroEstado === 'fallas' ? 'Solo Fallas' : filtros.filtroEstado === 'correctos' ? 'Solo Correctos' : null
                ].filter(Boolean).join(' | ') }}
              </span>
              <span v-else>Sin filtros adicionales</span>

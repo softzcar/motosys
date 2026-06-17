@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { 
-  Package, 
-  AlertTriangle, 
-  TrendingUp, 
-  CheckCircle2, 
-  Search, 
-  Printer, 
+import {
+  Package,
+  AlertTriangle,
+  TrendingUp,
+  CheckCircle2,
+  Search,
+  Printer,
   RotateCcw,
   ArrowUpRight,
   ArrowDownRight,
@@ -15,9 +15,10 @@ import {
   Wallet,
   ReceiptText,
   Ban,
-  ClipboardList
+  ClipboardList,
+  FileText
 } from 'lucide-vue-next'
-import { useAuditoria, type AuditoriaStockItem } from '~/composables/useAuditoria'
+import { useAuditoria, type AuditoriaStockItem, type CompraDetalleAuditoria } from '~/composables/useAuditoria'
 import { useCategoriasProductos } from '~/composables/useCategoriasProductos'
 import { useMarcas } from '~/composables/useMarcas'
 import { useProductos } from '~/composables/useProductos'
@@ -25,7 +26,7 @@ import { useProveedores } from '~/composables/useProveedores'
 import { useMetodosPago } from '~/composables/useMetodosPago'
 
 // Composables
-const { fetchAuditoriaStock, fetchAuditoriaPagos } = useAuditoria()
+const { fetchAuditoriaStock, fetchAuditoriaPagos, fetchComprasProducto } = useAuditoria()
 const { fetchAllCategorias } = useCategoriasProductos()
 const { fetchAllMarcas } = useMarcas()
 const { updateProductoConMotivo } = useProductos()
@@ -50,8 +51,19 @@ const searchQuery = ref('')
 const selectedCategoriaId = ref<string | null>(null)
 const selectedMarcaId = ref<string | null>(null)
 const selectedProveedorId = ref<string | null>(null)
-const soloDiscrepancias = ref(false)
+const filtroEstado = ref<'todos' | 'fallas' | 'correctos'>('todos')
+const filtroEstadoOptions = [
+  { label: 'Todos', value: 'todos' },
+  { label: 'Solo fallas', value: 'fallas' },
+  { label: 'Solo correctos', value: 'correctos' }
+]
 const corrigiendo = ref<Record<string, boolean>>({})
+
+// Estados para Modal de Detalle de Compras
+const detalleModal = ref(false)
+const detalleItem = ref<AuditoriaStockItem | null>(null)
+const detalleCompras = ref<CompraDetalleAuditoria[]>([])
+const loadingDetalle = ref(false)
 
 // Estados para Modal de Corrección
 const corregirModal = ref(false)
@@ -171,10 +183,11 @@ const filteredItems = computed(() => {
       return false
     }
 
-    if (soloDiscrepancias.value) {
+    if (filtroEstado.value !== 'todos') {
       const esperado = item.stock_inicial + item.compras_periodo - item.ventas_periodo
       const diff = item.stock_real_periodo - esperado
-      if (diff === 0) return false
+      if (filtroEstado.value === 'fallas' && diff === 0) return false
+      if (filtroEstado.value === 'correctos' && diff !== 0) return false
     }
 
     if (selectedProveedorId.value) {
@@ -215,6 +228,20 @@ const stats = computed(() => {
     exactitud
   }
 })
+
+const abrirDetalle = async (item: AuditoriaStockItem) => {
+  detalleItem.value = item
+  detalleCompras.value = []
+  detalleModal.value = true
+  loadingDetalle.value = true
+  try {
+    detalleCompras.value = await fetchComprasProducto(item.id, dateRangeStr.value!.desde, dateRangeStr.value!.hasta)
+  } catch (err: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: err.message, life: 4000 })
+  } finally {
+    loadingDetalle.value = false
+  }
+}
 
 const corregirStock = (item: AuditoriaStockItem) => {
   productoACorregir.value = item
@@ -498,12 +525,13 @@ const formatDateTime = (dateStr: string) => {
               </div>
 
               <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                  <ToggleSwitch v-model="soloDiscrepancias" id="soloDiscrepancias" />
-                  <label for="soloDiscrepancias" class="text-xs font-bold text-slate-600 cursor-pointer select-none">
-                    Mostrar solo discrepancias
-                  </label>
-                </div>
+                <SelectButton
+                  v-model="filtroEstado"
+                  :options="filtroEstadoOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="text-xs"
+                />
                 <Button label="Imprimir Reporte" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-8 shadow-sm" />
               </div>
             </div>
@@ -601,18 +629,30 @@ const formatDateTime = (dateStr: string) => {
 
                 <Column :exportable="false" header="Acciones" class="text-center w-24">
                   <template #body="slotProps">
-                    <Button 
-                      v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo)) !== 0"
-                      severity="success" 
-                      rounded 
-                      text
-                      v-tooltip.top="'Corregir stock al valor esperado'"
-                      :loading="corrigiendo[slotProps.data.id]"
-                      @click="corregirStock(slotProps.data)"
-                      class="!p-1 hover:bg-emerald-50 text-emerald-600"
-                    >
-                      <Check class="w-5 h-5" />
-                    </Button>
+                    <div class="flex items-center justify-center gap-1">
+                      <Button
+                        severity="secondary"
+                        rounded
+                        text
+                        v-tooltip.top="'Ver detalle de compras'"
+                        @click="abrirDetalle(slotProps.data)"
+                        class="!p-1 hover:bg-slate-100 text-slate-500"
+                      >
+                        <FileText class="w-4 h-4" />
+                      </Button>
+                      <Button
+                        v-if="(slotProps.data.stock_real_periodo - (slotProps.data.stock_inicial + slotProps.data.compras_periodo - slotProps.data.ventas_periodo)) !== 0"
+                        severity="success"
+                        rounded
+                        text
+                        v-tooltip.top="'Corregir stock al valor esperado'"
+                        :loading="corrigiendo[slotProps.data.id]"
+                        @click="corregirStock(slotProps.data)"
+                        class="!p-1 hover:bg-emerald-50 text-emerald-600"
+                      >
+                        <Check class="w-5 h-5" />
+                      </Button>
+                    </div>
                   </template>
                 </Column>
               </DataTable>
@@ -811,7 +851,7 @@ const formatDateTime = (dateStr: string) => {
           categoria: categorias.find(c => c.id === selectedCategoriaId)?.nombre,
           marca: marcas.find(m => m.id === selectedMarcaId)?.nombre,
           proveedor: proveedores.find(p => p.id === selectedProveedorId)?.nombre,
-          soloDiscrepancias: soloDiscrepancias
+          filtroEstado: filtroEstado
         }"
       />
     </div>
@@ -827,6 +867,89 @@ const formatDateTime = (dateStr: string) => {
         }"
       />
     </div>
+
+    <!-- Dialog de Detalle de Compras por Producto -->
+    <Dialog
+      v-model:visible="detalleModal"
+      :header="detalleItem ? `Compras del período — ${detalleItem.nombre}` : 'Detalle de Compras'"
+      modal
+      :style="{ width: '680px' }"
+    >
+      <div v-if="detalleItem" class="space-y-4">
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs grid grid-cols-3 gap-3">
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Código</p>
+            <p class="font-bold text-slate-700">{{ detalleItem.codigo_parte }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Compras período</p>
+            <p class="font-black text-emerald-600 text-sm">+{{ detalleItem.compras_periodo }} uds</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ventas período</p>
+            <p class="font-black text-rose-600 text-sm">-{{ detalleItem.ventas_periodo }} uds</p>
+          </div>
+        </div>
+
+        <div v-if="loadingDetalle" class="flex items-center justify-center py-8 text-slate-400">
+          <i class="pi pi-spin pi-spinner mr-2"></i> Cargando compras...
+        </div>
+
+        <DataTable
+          v-else
+          :value="detalleCompras"
+          class="p-datatable-sm text-xs"
+          stripedRows
+          :paginator="detalleCompras.length > 10"
+          :rows="10"
+        >
+          <template #empty>
+            <div class="text-center py-6 text-slate-400 text-xs">
+              No hay compras registradas para este producto en el período seleccionado.
+            </div>
+          </template>
+
+          <Column header="Compra #" class="w-20 text-center font-bold">
+            <template #body="s">
+              <span class="font-black text-slate-700">#{{ s.data.compras?.numero }}</span>
+            </template>
+          </Column>
+
+          <Column header="Factura" class="w-32">
+            <template #body="s">
+              <span v-if="s.data.compras?.numero_factura" class="font-medium text-blue-700">
+                {{ s.data.compras.numero_factura }}
+              </span>
+              <span v-else class="text-slate-300 italic">Sin factura</span>
+            </template>
+          </Column>
+
+          <Column header="Proveedor">
+            <template #body="s">
+              <span class="font-semibold text-slate-700">
+                {{ s.data.compras?.proveedores?.nombre || 'Desconocido' }}
+              </span>
+            </template>
+          </Column>
+
+          <Column header="Fecha" class="w-28 text-center">
+            <template #body="s">
+              {{ s.data.compras?.fecha ? new Date(s.data.compras.fecha + 'T00:00:00').toLocaleDateString('es-VE') : '' }}
+            </template>
+          </Column>
+
+          <Column header="Cant." class="w-16 text-center font-bold text-emerald-600">
+            <template #body="s">
+              +{{ s.data.cantidad }}
+            </template>
+          </Column>
+        </DataTable>
+      </div>
+
+      <template #footer>
+        <Button label="Cerrar" severity="secondary" text @click="detalleModal = false" />
+      </template>
+    </Dialog>
 
     <!-- Dialog de Ajuste / Corrección de Stock -->
     <Dialog
