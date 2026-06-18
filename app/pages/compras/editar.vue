@@ -37,6 +37,7 @@ const purchase = ref({
 
 const empresaIvaConfig = ref(16)
 const isIvaManual = ref(false)
+const ivaManualPercent = ref(empresaIvaConfig.value)
 
 const cart = ref<(DetalleCompra & { nombre: string, codigo_parte: string })[]>([])
 
@@ -200,24 +201,15 @@ const calculateTotal = () => {
   const descPorcentaje = Number(purchase.value.descuento) || 0
   const montoDescuento = subtotalItems * (descPorcentaje / 100)
   const baseImponible = subtotalItems - montoDescuento
-  
-  if (!isIvaManual.value) {
-    purchase.value.iva = baseImponible * (empresaIvaConfig.value / 100)
-  }
-  
+
+  const tasaIva = isIvaManual.value ? (Number(ivaManualPercent.value) || 0) : empresaIvaConfig.value
+  purchase.value.iva = baseImponible * (tasaIva / 100)
+
   purchase.value.total = baseImponible + purchase.value.iva
 }
 
-watch(isIvaManual, (manual) => {
-  if (!manual) {
-    calculateTotal()
-  }
-})
-
-watch(() => purchase.value.iva, () => {
-  if (isIvaManual.value) {
-    calculateTotal()
-  }
+watch(isIvaManual, () => {
+  calculateTotal()
 })
 
 const onSave = async () => {
@@ -288,8 +280,12 @@ const cargarDatosCompra = async (id: string) => {
     purchase.value.numero_factura = original.numero_factura
     purchase.value.fecha = original.fecha
     purchase.value.descuento = Number(original.descuento ?? 0)
+
+    const subtotalOriginal = Number(original.subtotal ?? 0)
+    const baseOriginal = subtotalOriginal - (subtotalOriginal * (purchase.value.descuento / 100))
+    const ivaOriginal = Number(original.iva ?? 0)
     isIvaManual.value = true
-    purchase.value.iva = Number(original.iva ?? 0)
+    ivaManualPercent.value = baseOriginal > 0 ? (ivaOriginal / baseOriginal) * 100 : empresaIvaConfig.value
 
     cart.value = (original.detalle_compras ?? []).map((d: any) => ({
       id_producto: d.id_producto,
@@ -428,8 +424,10 @@ const formatCurrency = (value: number) => {
                           <ToggleSwitch v-model="isIvaManual" class="scale-75" />
                        </div>
                     </div>
-                    <div v-if="isIvaManual" class="w-full">
-                       <InputNumber v-model="purchase.iva" mode="currency" currency="USD" locale="en-US" :minFractionDigits="2" class="w-full" :min="0" @focus="$event => ($event.target as HTMLInputElement).select()" />                  </div>
+                    <div v-if="isIvaManual" class="w-full flex items-center justify-between gap-2">
+                       <InputNumber v-model="ivaManualPercent" :min="0" :max="100" suffix="%" class="w-full" :minFractionDigits="2" :maxFractionDigits="2" @update:modelValue="calculateTotal" @focus="$event => ($event.target as HTMLInputElement).select()" />
+                       <span class="text-sm font-bold text-slate-800 whitespace-nowrap">{{ formatCurrency(purchase.iva) }}</span>
+                    </div>
                     <div v-else class="text-right">
                        <span class="text-sm font-bold text-slate-800">{{ formatCurrency(purchase.iva) }}</span>
                        <span class="text-[9px] text-slate-400 ml-2">(Auto: {{ empresaIvaConfig }}%)</span>
