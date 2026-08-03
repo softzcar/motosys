@@ -80,6 +80,13 @@ const confirmarEliminar = (c: CierreCaja) => {
   })
 }
 
+const isUltimoCierre = (c: CierreCaja) => {
+  if (!cierres.value || cierres.value.length === 0) return false
+  // Obtener el cierre con la fecha_hora_cierre o fecha más reciente
+  const masReciente = [...cierres.value].sort((a, b) => new Date(b.fecha_hora_cierre || b.fecha).getTime() - new Date(a.fecha_hora_cierre || a.fecha).getTime())[0]
+  return masReciente?.id === c.id
+}
+
 const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v))
 const formatDate = (v: string) => new Date(v).toLocaleDateString('es')
 const formatDateTime = (v: string) => new Date(v).toLocaleString('es')
@@ -171,13 +178,13 @@ onMounted(load)
                 <Eye class="w-4 h-4" />
               </Button>
               <Button 
-                v-if="index === 0 && page === 0" 
+                v-if="isUltimoCierre(data)" 
                 text 
                 rounded 
                 severity="danger" 
                 @click="confirmarEliminar(data)" 
                 class="hover:bg-red-50" 
-                v-tooltip.top="'Eliminar Último Cierre'"
+                v-tooltip.top="'Eliminar Cierre'"
               >
                 <Trash2 class="w-4 h-4" />
               </Button>
@@ -251,7 +258,17 @@ onMounted(load)
       </div>
 
       <template #footer>
-        <Button label="Cerrar" text severity="secondary" @click="detailModal = false" />
+        <div class="flex justify-between items-center w-full">
+          <Button 
+            v-if="selected && isUltimoCierre(selected)" 
+            label="Eliminar este Cierre" 
+            severity="danger" 
+            outlined 
+            @click="detailModal = false; confirmarEliminar(selected)" 
+          />
+          <span v-else></span>
+          <Button label="Cerrar" text severity="secondary" @click="detailModal = false" />
+        </div>
       </template>
     </Dialog>
   </div>
