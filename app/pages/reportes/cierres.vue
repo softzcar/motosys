@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { BarChart3, Eye, ArrowLeft, Loader2 } from 'lucide-vue-next'
+import { BarChart3, Eye, ArrowLeft, Loader2, Trash2 } from 'lucide-vue-next'
 import { useCierresCaja, type CierreCaja } from '~/composables/useCierresCaja'
 
 const toast = useToast()
+const confirm = useConfirm()
 const { isAdmin, perfil } = usePerfil()
 
 watch(perfil, (p) => {
   if (p && p.rol !== 'admin') navigateTo('/reportes')
 }, { immediate: true })
 
-const { fetchCierres } = useCierresCaja()
+const { fetchCierres, eliminarUltimoCierre } = useCierresCaja()
 
 const cierres = ref<CierreCaja[]>([])
 const loading = ref(false)
@@ -57,6 +58,26 @@ const load = async (event?: any) => {
 const verDetalle = (c: CierreCaja) => {
   selected.value = c
   detailModal.value = true
+}
+
+const confirmarEliminar = (c: CierreCaja) => {
+  confirm.require({
+    message: `¿Estás seguro de que deseas eliminar el cierre del ${formatDate(c.fecha)}? Las ventas y movimientos asociados quedarán liberados para volver a cerrarse.`,
+    header: 'Confirmar Eliminación de Cierre',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Sí, Eliminar Cierre',
+    rejectLabel: 'Cancelar',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await eliminarUltimoCierre(c.id)
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Cierre eliminado correctamente', life: 3000 })
+        await load()
+      } catch (e: any) {
+        toast.add({ severity: 'error', summary: 'Error al eliminar', detail: e.message || 'No se pudo eliminar el cierre', life: 5000 })
+      }
+    }
+  })
 }
 
 const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v))
@@ -144,10 +165,23 @@ onMounted(load)
           </template>
         </Column>
         <Column header="" :exportable="false">
-          <template #body="{ data }">
-            <Button text rounded severity="secondary" @click="verDetalle(data)" class="text-blue-500 hover:bg-blue-50">
-              <Eye class="w-4 h-4" />
-            </Button>
+          <template #body="{ data, index }">
+            <div class="flex items-center gap-1 justify-end">
+              <Button text rounded severity="secondary" @click="verDetalle(data)" class="text-blue-500 hover:bg-blue-50" v-tooltip.top="'Ver Detalle'">
+                <Eye class="w-4 h-4" />
+              </Button>
+              <Button 
+                v-if="index === 0 && page === 0" 
+                text 
+                rounded 
+                severity="danger" 
+                @click="confirmarEliminar(data)" 
+                class="hover:bg-red-50" 
+                v-tooltip.top="'Eliminar Último Cierre'"
+              >
+                <Trash2 class="w-4 h-4" />
+              </Button>
+            </div>
           </template>
         </Column>
       </DataTable>

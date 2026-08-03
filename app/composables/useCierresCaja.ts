@@ -108,5 +108,10 @@ export const useCierresCaja = () => {
     return data as CierreCaja
   }
 
-  return { previewCierre, ejecutarCierre, fetchCierres, fetchCierreById }
+  const eliminarUltimoCierre = async (cierreId: string) => {
+    const { error } = await client.rpc('eliminar_ultimo_cierre_caja', { p_cierre_id: cierreId })
+    if (error) throw error
+  }
+
+  return { previewCierre, ejecutarCierre, fetchCierres, fetchCierreById, eliminarUltimoCierre }
 }
