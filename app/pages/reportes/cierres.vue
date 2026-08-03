@@ -20,7 +20,7 @@ const rows = ref(50)
 const sortField = ref('fecha')
 const sortOrder = ref(-1)
 
-const desde = ref(new Date(new Date().setDate(new Date().getDate() - 30)))
+const desde = ref(new Date(new Date().setDate(new Date().getDate() - 90)))
 const hasta = ref(new Date())
 
 const detailModal = ref(false)
@@ -82,19 +82,15 @@ const confirmarEliminar = (c: CierreCaja) => {
 
 const isUltimoCierre = (c: CierreCaja) => {
   if (!cierres.value || cierres.value.length === 0 || !c) return false
-  // Buscar el ID con la fecha más reciente de todo el array cargado
-  let maxId = cierres.value[0].id
-  let maxTime = new Date(cierres.value[0].fecha_hora_cierre || cierres.value[0].fecha).getTime()
-
-  for (const item of cierres.value) {
-    const t = new Date(item.fecha_hora_cierre || item.fecha).getTime()
-    if (t > maxTime) {
-      maxTime = t
-      maxId = item.id
-    }
-  }
-
-  return c.id === maxId
+  
+  // Ordenar los cierres por fecha descendente (la mayor fecha primero)
+  const copia = [...cierres.value].sort((a, b) => {
+    const timeA = new Date(a.fecha_hora_cierre || a.fecha).getTime()
+    const timeB = new Date(b.fecha_hora_cierre || b.fecha).getTime()
+    return timeB - timeA
+  })
+  
+  return copia[0]?.id === c.id
 }
 
 const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v))
