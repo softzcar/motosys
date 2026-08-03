@@ -80,19 +80,6 @@ const confirmarEliminar = (c: CierreCaja) => {
   })
 }
 
-const isUltimoCierre = (c: CierreCaja) => {
-  if (!cierres.value || cierres.value.length === 0 || !c) return false
-  
-  // Ordenar los cierres por fecha descendente (la mayor fecha primero)
-  const copia = [...cierres.value].sort((a, b) => {
-    const timeA = new Date(a.fecha_hora_cierre || a.fecha).getTime()
-    const timeB = new Date(b.fecha_hora_cierre || b.fecha).getTime()
-    return timeB - timeA
-  })
-  
-  return copia[0]?.id === c.id
-}
-
 const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v))
 const formatDate = (v: string) => new Date(v).toLocaleDateString('es')
 const formatDateTime = (v: string) => new Date(v).toLocaleString('es')
@@ -178,13 +165,12 @@ onMounted(load)
           </template>
         </Column>
         <Column header="" :exportable="false">
-          <template #body="{ data, index }">
+          <template #body="{ data }">
             <div class="flex items-center gap-1 justify-end">
               <Button text rounded severity="secondary" @click="verDetalle(data)" class="text-blue-500 hover:bg-blue-50" v-tooltip.top="'Ver Detalle'">
                 <Eye class="w-4 h-4" />
               </Button>
               <Button 
-                v-if="isUltimoCierre(data)" 
                 text 
                 rounded 
                 severity="danger" 
@@ -213,7 +199,7 @@ onMounted(load)
           </div>
           <div>
             <p class="text-[10px] text-slate-400 font-bold uppercase">Responsable</p>
-            <p class="text-sm font-bold text-slate-700">{{ selected.responsable?.nombre ?? '—' }}</p>
+            <p class="text-sm font-bold text-slate-600">{{ selected.responsable?.nombre ?? '—' }}</p>
           </div>
           <div>
             <p class="text-[10px] text-slate-400 font-bold uppercase">Diferencia</p>
@@ -223,7 +209,7 @@ onMounted(load)
           </div>
         </div>
 
-        <div v-if="selected && isUltimoCierre(selected)" class="flex justify-end pt-1">
+        <div class="flex justify-end pt-1">
           <Button 
             label="Eliminar este Cierre de Caja" 
             icon="pi pi-trash" 
@@ -276,7 +262,7 @@ onMounted(load)
       <template #footer>
         <div class="flex justify-between items-center w-full">
           <Button 
-            v-if="selected && isUltimoCierre(selected)" 
+            v-if="selected" 
             label="Eliminar este Cierre" 
             severity="danger" 
             outlined 
