@@ -10,12 +10,13 @@ import { useProveedores } from '~/composables/useProveedores'
 
 const client = useSupabaseClient()
 const toast = useToast()
+const confirm = useConfirm()
 const { fetchVentas, fetchVentaById, fetchVendedoresConVentas, anularVenta } = useVentas()
 const { fetchProductos } = useProductos()
 const { fetchAllCategorias } = useCategoriasProductos()
 const { fetchAllMarcas } = useMarcas()
 const { fetchCompras, getCompraById } = useCompras()
-const { fetchCierres, fetchCierreById } = useCierresCaja()
+const { fetchCierres, fetchCierreById, eliminarUltimoCierre } = useCierresCaja()
 const { fetchProveedores } = useProveedores()
 const { isAdmin } = usePerfil()
 
@@ -527,6 +528,27 @@ const irACorreccionVenta = (ventaId: string) => {
   navigateTo(`/pos?corrigiendo=${ventaId}`)
 }
 
+const confirmarEliminarCierre = (cierre: any) => {
+  confirm.require({
+    message: `¿Estás seguro de que deseas eliminar el cierre del ${formatDate(cierre.fecha)}? Las ventas y movimientos asociados quedarán liberados para volver a cerrarse.`,
+    header: 'Confirmar Eliminación de Cierre',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Sí, Eliminar Cierre',
+    rejectLabel: 'Cancelar',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await eliminarUltimoCierre(cierre.id)
+        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Cierre eliminado correctamente', life: 3000 })
+        closureDetailsModal.value = false
+        loadCierres()
+      } catch (e: any) {
+        toast.add({ severity: 'error', summary: 'Error al eliminar', detail: e.message || 'No se pudo eliminar el cierre', life: 5000 })
+      }
+    }
+  })
+}
+
 const imprimirReporte = () => {
   window.print()
 }
@@ -819,11 +841,16 @@ const getCleanContadoUsd = (cierre: any) => {
                           </span>
                        </template>
                     </Column>
-                    <Column :exportable="false" header="Ver">
+                    <Column :exportable="false" header="Acciones">
                        <template #body="slotProps">
-                          <Button severity="secondary" text rounded @click="openCierreDetails(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2">
-                             <Eye class="w-5 h-5" />
-                          </Button>
+                          <div class="flex items-center gap-1">
+                             <Button severity="secondary" text rounded @click="openCierreDetails(slotProps.data)" class="text-blue-500 hover:bg-blue-50 p-2" v-tooltip.top="'Ver detalle'">
+                                <Eye class="w-5 h-5" />
+                             </Button>
+                             <Button v-if="isAdmin" severity="danger" text rounded @click="confirmarEliminarCierre(slotProps.data)" class="hover:bg-rose-50 p-2" v-tooltip.top="'Eliminar Cierre'">
+                                <Trash2 class="w-5 h-5" />
+                             </Button>
+                          </div>
                        </template>
                     </Column>
                  </DataTable>
@@ -1196,7 +1223,11 @@ const getCleanContadoUsd = (cierre: any) => {
            </div>
         </div>
         <template #footer>
-           <Button label="Cerrar" text severity="secondary" @click="closureDetailsModal = false" />
+           <div class="flex justify-between items-center w-full">
+              <Button v-if="isAdmin && selectedClosure" severity="danger" outlined label="Eliminar este Cierre" icon="pi pi-trash" @click="confirmarEliminarCierre(selectedClosure)" />
+              <span v-else></span>
+              <Button label="Cerrar" text severity="secondary" @click="closureDetailsModal = false" />
+           </div>
         </template>
      </Dialog>
      <Dialog v-model:visible="auditoriaDetailModal" :style="{ width: '600px' }" modal header="Detalle de Auditoría">
