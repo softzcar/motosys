@@ -81,10 +81,20 @@ const confirmarEliminar = (c: CierreCaja) => {
 }
 
 const isUltimoCierre = (c: CierreCaja) => {
-  if (!cierres.value || cierres.value.length === 0) return false
-  // Obtener el cierre con la fecha_hora_cierre o fecha más reciente
-  const masReciente = [...cierres.value].sort((a, b) => new Date(b.fecha_hora_cierre || b.fecha).getTime() - new Date(a.fecha_hora_cierre || a.fecha).getTime())[0]
-  return masReciente?.id === c.id
+  if (!cierres.value || cierres.value.length === 0 || !c) return false
+  // Buscar el ID con la fecha más reciente de todo el array cargado
+  let maxId = cierres.value[0].id
+  let maxTime = new Date(cierres.value[0].fecha_hora_cierre || cierres.value[0].fecha).getTime()
+
+  for (const item of cierres.value) {
+    const t = new Date(item.fecha_hora_cierre || item.fecha).getTime()
+    if (t > maxTime) {
+      maxTime = t
+      maxId = item.id
+    }
+  }
+
+  return c.id === maxId
 }
 
 const formatCurrency = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(v))
@@ -215,6 +225,16 @@ onMounted(load)
               {{ formatCurrency(selected.diferencia_usd) }}
             </p>
           </div>
+        </div>
+
+        <div v-if="selected && isUltimoCierre(selected)" class="flex justify-end pt-1">
+          <Button 
+            label="Eliminar este Cierre de Caja" 
+            icon="pi pi-trash" 
+            severity="danger" 
+            size="small" 
+            @click="detailModal = false; confirmarEliminar(selected)" 
+          />
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-200">
