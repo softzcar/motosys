@@ -14,10 +14,10 @@ import {
   DollarSign,
   Wallet,
   ReceiptText,
-  Ban,
   ClipboardList,
   FileText
 } from 'lucide-vue-next'
+import { useDebounceFn } from '@vueuse/core'
 import { useAuditoria, type AuditoriaStockItem, type CompraDetalleAuditoria } from '~/composables/useAuditoria'
 import { useCategoriasProductos } from '~/composables/useCategoriasProductos'
 import { useMarcas } from '~/composables/useMarcas'
