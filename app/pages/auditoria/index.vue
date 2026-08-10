@@ -24,20 +24,114 @@ import { useMarcas } from '~/composables/useMarcas'
 import { useProductos } from '~/composables/useProductos'
 import { useProveedores } from '~/composables/useProveedores'
 import { useMetodosPago } from '~/composables/useMetodosPago'
+import { useHistorialProductos, type HistorialProductoItem } from '~/composables/useHistorialProductos'
+import { useOfflineDb, db } from '~/composables/useOfflineDb'
+import type { Producto } from '~/types/database'
 
 // Composables
 const { fetchAuditoriaStock, fetchAuditoriaPagos, fetchComprasProducto } = useAuditoria()
 const { fetchAllCategorias } = useCategoriasProductos()
 const { fetchAllMarcas } = useMarcas()
-const { updateProductoConMotivo } = useProductos()
+const { updateProductoConMotivo, fetchProductos, findByCodigo } = useProductos()
 const { fetchAllProveedores } = useProveedores()
 const { fetchMetodosPago } = useMetodosPago()
+const { fetchHistorialProducto } = useHistorialProductos()
+const { isOnline } = useOfflineDb()
 const toast = useToast()
 
 // Estados Generales
 const activeTab = ref('stock')
 const loading = ref(false)
 const range = ref<Date[]>([])
+
+// --- ESTADOS TAB 3: AUDITORÍA DE PRODUCTOS (TYPEAHEAD) ---
+const searchTypeahead = ref('')
+const typeaheadResultados = ref<Producto[]>([])
+const loadingTypeahead = ref(false)
+const productoSeleccionadoAuditoria = ref<Producto | null>(null)
+const historialProductoSeleccionado = ref<HistorialProductoItem | null>(null)
+const loadingHistorialItem = ref(false)
+
+const buscarTypeahead = useDebounceFn(async () => {
+  if (!searchTypeahead.value || searchTypeahead.value.length < 2) {
+    typeaheadResultados.value = []
+    return
+  }
+  loadingTypeahead.value = true
+  try {
+    if (isOnline.value) {
+      const { data } = await fetchProductos({ search: searchTypeahead.value, rows: 50, soloActivos: true })
+      typeaheadResultados.value = data
+    } else {
+      const term = searchTypeahead.value.toLowerCase()
+      const localResults = await db.productos
+        .filter(p => 
+          p.nombre.toLowerCase().includes(term) || 
+          p.codigo_parte.toLowerCase().includes(term)
+        )
+        .limit(50)
+        .toArray()
+      typeaheadResultados.value = localResults
+    }
+  } catch (e) {
+    console.error('Error buscando productos:', e)
+    typeaheadResultados.value = []
+  } finally {
+    loadingTypeahead.value = false
+  }
+}, 300)
+
+const seleccionarProductoTypeahead = async (prod: Producto) => {
+  productoSeleccionadoAuditoria.value = prod
+  searchTypeahead.value = ''
+  typeaheadResultados.value = []
+  
+  loadingHistorialItem.value = true
+  try {
+    const { compras, ajustes, ventas } = await fetchHistorialProducto(prod.id)
+    const totalComprado = compras.filter(c => !c.anulada).reduce((acc, c) => acc + c.cantidad, 0)
+    const totalVendido = ventas.filter(v => !v.anulada).reduce((acc, v) => acc + v.cantidad, 0)
+    const totalAjustado = ajustes.reduce((acc, a) => acc + a.diferencia, 0)
+
+    historialProductoSeleccionado.value = {
+      producto: prod,
+      compras,
+      ajustes,
+      ventas,
+      resumen: {
+        totalComprado,
+        totalAjustado,
+        totalVendido,
+        stockActual: prod.stock
+      }
+    }
+  } catch (err: any) {
+    console.error('Error cargando historial de producto:', err)
+    toast.add({ severity: 'error', summary: 'Error al obtener historial', detail: err.message, life: 3000 })
+  } finally {
+    loadingHistorialItem.value = false
+  }
+}
+
+// Scanner de código de barras para la pestaña de auditoría de productos
+useBarcodeScanner(async (code) => {
+  if (activeTab.value !== 'productos') return
+  try {
+    let producto = null
+    if (isOnline.value) {
+      producto = await findByCodigo(code)
+    } else {
+      producto = await db.productos.where('codigo_parte').equals(code).first()
+    }
+    if (producto) {
+      await seleccionarProductoTypeahead(producto)
+    } else {
+      toast.add({ severity: 'warn', summary: 'No encontrado', detail: `Código: ${code}`, life: 3000 })
+    }
+  } catch (e) {
+    console.error('Error escaneando:', e)
+  }
+})
 
 // Catálogos de Filtros
 const categorias = ref<any[]>([])
@@ -426,6 +520,9 @@ const formatDateTime = (dateStr: string) => {
         </Tab>
         <Tab value="pagos" class="flex items-center gap-2">
           <DollarSign :size="16" /> Auditoría de Pagos
+        </Tab>
+        <Tab value="productos" class="flex items-center gap-2">
+          <RotateCcw :size="16" /> Auditoría de Productos
         </Tab>
       </TabList>
 
@@ -837,6 +934,178 @@ const formatDateTime = (dateStr: string) => {
             </div>
           </div>
         </TabPanel>
+
+        <!-- PESTAÑA 3: AUDITORÍA DE PRODUCTOS (TYPEAHEAD) -->
+        <TabPanel value="productos">
+          <div class="space-y-6">
+            <!-- Barra de Búsqueda Typeahead exacta como POS -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 relative">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Buscar producto para auditoría (Nombre o SKU / Código de parte)
+                </label>
+                <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase">
+                  Scanner / Código de Barras Activo
+                </span>
+              </div>
+
+              <IconField class="w-full">
+                <InputIcon class="pi pi-search" />
+                <InputText
+                  v-model="searchTypeahead"
+                  placeholder="Escribe el nombre del producto o código SKU..."
+                  class="w-full text-sm"
+                  @input="buscarTypeahead"
+                />
+              </IconField>
+
+              <!-- Resultados desplegables del Typeahead -->
+              <div 
+                v-if="typeaheadResultados.length > 0" 
+                class="absolute z-50 left-4 right-4 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-80 overflow-y-auto divide-y divide-slate-100"
+              >
+                <button
+                  v-for="p in typeaheadResultados"
+                  :key="p.id"
+                  class="w-full text-left p-3 hover:bg-slate-50 transition-colors flex items-center justify-between"
+                  @click="seleccionarProductoTypeahead(p)"
+                >
+                  <div>
+                    <p class="text-sm font-bold text-slate-800">{{ p.nombre }}</p>
+                    <p class="text-xs text-slate-500 font-mono">SKU: {{ p.codigo_parte }}</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xs font-black text-slate-700 block">${{ Number(p.precio_venta).toFixed(2) }}</span>
+                    <Tag :severity="p.stock < 5 ? 'danger' : 'success'" :value="`Stock: ${p.stock}`" class="text-[10px]" />
+                  </div>
+                </button>
+              </div>
+
+              <div v-else-if="loadingTypeahead" class="mt-2 text-xs text-slate-400 italic">
+                Buscando productos...
+              </div>
+            </div>
+
+            <!-- Contenido del Historial del Producto Seleccionado -->
+            <div v-if="loadingHistorialItem" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 font-bold uppercase text-xs">
+              Cargando trazabilidad e historial del producto...
+            </div>
+
+            <div v-else-if="!historialProductoSeleccionado" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 font-bold uppercase text-xs flex flex-col items-center gap-2">
+              <Search :size="32" class="opacity-40" />
+              <p>Selecciona un producto mediante el buscador arriba para consultar su historial de compras, facturas, ajustes y ventas.</p>
+            </div>
+
+            <div v-else class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
+              <!-- Encabezado del Producto -->
+              <div class="flex justify-between items-center bg-slate-900 text-white p-3 rounded-lg">
+                <div>
+                  <h4 class="text-base font-black uppercase m-0 tracking-wide">{{ historialProductoSeleccionado.producto.nombre }}</h4>
+                  <p class="text-[10px] text-slate-300 font-bold m-0 mt-0.5">SKU / CÓDIGO: {{ historialProductoSeleccionado.producto.codigo_parte }}</p>
+                </div>
+                <div class="flex gap-4 text-xs font-bold bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
+                  <span>Stock Actual: <strong class="text-emerald-400 font-black">{{ historialProductoSeleccionado.producto.stock }}</strong></span>
+                  <span v-if="historialProductoSeleccionado.producto.ubicacion">Ubicación: <strong>{{ historialProductoSeleccionado.producto.ubicacion }}</strong></span>
+                </div>
+              </div>
+
+              <!-- Resumen rápido -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                <div>
+                  <span class="text-slate-400 font-bold uppercase text-[10px] block">Total Comprado</span>
+                  <span class="font-black text-slate-800 text-sm">{{ historialProductoSeleccionado.resumen.totalComprado }} unidades</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 font-bold uppercase text-[10px] block">Total Vendido</span>
+                  <span class="font-black text-slate-800 text-sm">{{ historialProductoSeleccionado.resumen.totalVendido }} unidades</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 font-bold uppercase text-[10px] block">Ajustes Netos</span>
+                  <span class="font-black text-sm" :class="historialProductoSeleccionado.resumen.totalAjustado >= 0 ? 'text-emerald-600' : 'text-rose-600'">
+                    {{ historialProductoSeleccionado.resumen.totalAjustado > 0 ? '+' : '' }}{{ historialProductoSeleccionado.resumen.totalAjustado }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-slate-400 font-bold uppercase text-[10px] block">Stock en Sistema</span>
+                  <span class="font-black text-slate-800 text-sm">{{ historialProductoSeleccionado.resumen.stockActual }}</span>
+                </div>
+              </div>
+
+              <!-- 1. COMPRAS Y FACTURAS -->
+              <div>
+                <h5 class="text-xs font-black uppercase text-slate-700 mb-2 flex items-center gap-2">
+                  <Package :size="14" /> 1. Historial de Compras y Facturas ({{ historialProductoSeleccionado.compras.length }})
+                </h5>
+                <DataTable :value="historialProductoSeleccionado.compras" stripedRows class="p-datatable-sm text-xs">
+                  <Column field="fecha" header="Fecha">
+                    <template #body="{ data }">{{ new Date(data.fecha).toLocaleDateString('es-VE') }}</template>
+                  </Column>
+                  <Column field="numero_compra" header="N° Compra">
+                    <template #body="{ data }">#{{ data.numero_compra }}</template>
+                  </Column>
+                  <Column field="numero_factura" header="Factura">
+                    <template #body="{ data }">{{ data.numero_factura || 'N/A' }}</template>
+                  </Column>
+                  <Column field="proveedor_nombre" header="Proveedor"></Column>
+                  <Column field="cantidad" header="Cantidad Ingresada" class="text-center font-bold"></Column>
+                  <Column field="costo_unitario" header="Costo U.">
+                    <template #body="{ data }">${{ Number(data.costo_unitario).toFixed(2) }}</template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <!-- 2. AJUSTES Y AUDITORÍA -->
+              <div>
+                <h5 class="text-xs font-black uppercase text-slate-700 mb-2 flex items-center gap-2">
+                  <AlertCircle :size="14" /> 2. Ajustes Manuales y Auditoría ({{ historialProductoSeleccionado.ajustes.length }})
+                </h5>
+                <DataTable :value="historialProductoSeleccionado.ajustes" stripedRows class="p-datatable-sm text-xs">
+                  <Column field="fecha" header="Fecha">
+                    <template #body="{ data }">{{ new Date(data.fecha).toLocaleString('es-VE') }}</template>
+                  </Column>
+                  <Column field="accion" header="Acción" class="uppercase font-bold"></Column>
+                  <Column field="usuario_nombre" header="Usuario"></Column>
+                  <Column field="motivo" header="Motivo / Descripción">
+                    <template #body="{ data }"><span class="italic text-slate-600">{{ data.motivo || 'N/A' }}</span></template>
+                  </Column>
+                  <Column header="Cambio Stock" class="text-center font-bold">
+                    <template #body="{ data }">{{ data.stock_anterior }} &rarr; {{ data.stock_nuevo }}</template>
+                  </Column>
+                  <Column field="diferencia" header="Diferencia" class="text-center font-black">
+                    <template #body="{ data }">
+                      <span :class="data.diferencia >= 0 ? 'text-emerald-600' : 'text-rose-600'">
+                        {{ data.diferencia > 0 ? '+' : '' }}{{ data.diferencia }}
+                      </span>
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <!-- 3. VENTAS -->
+              <div>
+                <h5 class="text-xs font-black uppercase text-slate-700 mb-2 flex items-center gap-2">
+                  <TrendingUp :size="14" /> 3. Historial de Ventas ({{ historialProductoSeleccionado.ventas.length }})
+                </h5>
+                <DataTable :value="historialProductoSeleccionado.ventas" stripedRows class="p-datatable-sm text-xs">
+                  <Column field="fecha" header="Fecha">
+                    <template #body="{ data }">{{ new Date(data.fecha).toLocaleDateString('es-VE') }}</template>
+                  </Column>
+                  <Column field="numero_venta" header="N° Venta">
+                    <template #body="{ data }">#{{ data.numero_venta }}</template>
+                  </Column>
+                  <Column field="cliente_nombre" header="Cliente"></Column>
+                  <Column field="cantidad" header="Cantidad Vendida" class="text-center font-bold"></Column>
+                  <Column field="precio_unitario" header="Precio U.">
+                    <template #body="{ data }">${{ Number(data.precio_unitario).toFixed(2) }}</template>
+                  </Column>
+                  <Column field="subtotal" header="Subtotal">
+                    <template #body="{ data }">${{ Number(data.subtotal).toFixed(2) }}</template>
+                  </Column>
+                </DataTable>
+              </div>
+            </div>
+          </div>
+        </TabPanel>
       </TabPanels>
     </Tabs>
 
@@ -865,6 +1134,13 @@ const formatDateTime = (dateStr: string) => {
           search: searchQueryPagos,
           metodoPagoId: selectedMetodoPagoId
         }"
+      />
+    </div>
+
+    <div v-show="activeTab === 'productos'">
+      <ReportesHistorialProductoReport 
+        :items="historialProductoSeleccionado ? [historialProductoSeleccionado] : []" 
+        :loading="loadingHistorialItem" 
       />
     </div>
 

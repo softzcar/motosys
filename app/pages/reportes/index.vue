@@ -7,6 +7,7 @@ import { useCategoriasProductos } from '~/composables/useCategoriasProductos'
 import { useCompras } from '~/composables/useCompras'
 import { useCierresCaja, type CierreCaja } from '~/composables/useCierresCaja'
 import { useProveedores } from '~/composables/useProveedores'
+import { useHistorialProductos, type HistorialProductoItem } from '~/composables/useHistorialProductos'
 
 const client = useSupabaseClient()
 const toast = useToast()
@@ -19,9 +20,90 @@ const { fetchCompras, getCompraById } = useCompras()
 const { fetchCierres, fetchCierreById, eliminarUltimoCierre } = useCierresCaja()
 const { fetchProveedores } = useProveedores()
 const { isAdmin } = usePerfil()
+const { fetchHistorialProducto } = useHistorialProductos()
 
 // --- ESTADOS ---
 const activeTab = ref('ventas')
+
+// Estado de Historial Específico
+const historialItems = ref<HistorialProductoItem[]>([])
+const loadingHistorial = ref(false)
+const productosBuscarQuery = ref('Cauchos 2.75-28, Aceite iponne, Aceite motul, Piston cgb 0.50 platinum')
+
+const loadHistorialEspecifico = async () => {
+  loadingHistorial.value = true
+  historialItems.value = []
+  
+  // Nombres objetivo a buscar
+  const nombresTarget = [
+    'Cauchos 2.75-28',
+    'Aceite iponne',
+    'Aceite motul',
+    'Piston cgb  0.50 platinum',
+    'Piston cgb 0.50 platinum'
+  ]
+
+  try {
+    // Buscar los productos por nombre o coincidencia
+    const { data: todosProductos } = await fetchProductos({ rows: 500 })
+    
+    const coincidenciaMap = new Map<string, any>()
+    
+    for (const target of nombresTarget) {
+      const targetClean = target.toLowerCase().replace(/\s+/g, ' ').trim()
+      const hallado = todosProductos.find(p => {
+        const pNombreClean = p.nombre.toLowerCase().replace(/\s+/g, ' ').trim()
+        return pNombreClean.includes(targetClean) || targetClean.includes(pNombreClean)
+      })
+      if (hallado && !coincidenciaMap.has(hallado.id)) {
+        coincidenciaMap.set(hallado.id, hallado)
+      }
+    }
+
+    // Si la búsqueda por lista inicial no encuentra 4 productos, incluir también aquellos que coincidan con la búsqueda manual si el usuario escribe
+    if (productosBuscarQuery.value.trim()) {
+      const terminos = productosBuscarQuery.value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+      for (const p of todosProductos) {
+        const pNombreClean = p.nombre.toLowerCase()
+        if (terminos.some(t => pNombreClean.includes(t)) && !coincidenciaMap.has(p.id)) {
+          coincidenciaMap.set(p.id, p)
+        }
+      }
+    }
+
+    const productosSeleccionados = Array.from(coincidenciaMap.values())
+
+    // Para cada producto, traer historial completo (compras, ajustes, ventas)
+    const itemsRes: HistorialProductoItem[] = []
+    for (const prod of productosSeleccionados) {
+      const { compras, ajustes, ventas } = await fetchHistorialProducto(prod.id)
+
+      const totalComprado = compras.filter(c => !c.anulada).reduce((acc, c) => acc + c.cantidad, 0)
+      const totalVendido = ventas.filter(v => !v.anulada).reduce((acc, v) => acc + v.cantidad, 0)
+      const totalAjustado = ajustes.reduce((acc, a) => acc + a.diferencia, 0)
+
+      itemsRes.push({
+        producto: prod,
+        compras,
+        ajustes,
+        ventas,
+        resumen: {
+          totalComprado,
+          totalAjustado,
+          totalVendido,
+          stockActual: prod.stock
+        }
+      })
+    }
+
+    historialItems.value = itemsRes
+  } catch (error: any) {
+    console.error('Error cargando historial de productos:', error)
+    toast.add({ severity: 'error', summary: 'Error al obtener historial', detail: error.message, life: 3000 })
+  } finally {
+    loadingHistorial.value = false
+  }
+}
 
 // Filtros Globales (Periodo)
 const range = ref<Date[]>([])
@@ -192,6 +274,7 @@ const loadAll = () => {
   loadAuditoria()
   loadCategorias()
   loadVentasPorCliente()
+  loadHistorialEspecifico()
 }
 
 const loadVentasPorCliente = async (event?: any) => {
@@ -683,6 +766,9 @@ const getCleanContadoUsd = (cierre: any) => {
         <Tab value="auditoria" class="flex items-center gap-2">
           <History :size="16" /> Auditoría
         </Tab>
+        <Tab value="historial-productos" class="flex items-center gap-2">
+          <RotateCcw :size="16" /> Historial de Productos
+        </Tab>
       </TabList>
 
       <TabPanels class="mt-4">
@@ -1127,6 +1213,143 @@ const getCleanContadoUsd = (cierre: any) => {
               </DataTable>
            </div>
         </TabPanel>
+
+        <!-- 7. HISTORIAL DE PRODUCTOS -->
+        <TabPanel value="historial-productos">
+           <div class="space-y-6">
+              <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
+                 <div>
+                   <h3 class="text-sm font-bold text-slate-700 m-0 uppercase tracking-tight">Trazabilidad e Historial Específico</h3>
+                   <p class="text-slate-400 text-xs mt-0.5">Historial de compras, facturas, ajustes y ventas por producto</p>
+                 </div>
+                 <div class="flex items-center gap-3">
+                    <IconField class="w-96">
+                       <InputIcon class="pi pi-search" />
+                       <InputText v-model="productosBuscarQuery" placeholder="Separa nombres por coma..." class="w-full" @change="loadHistorialEspecifico" />
+                    </IconField>
+                    <Button label="Buscar" icon="pi pi-search" severity="primary" size="small" @click="loadHistorialEspecifico" class="h-9 shadow-sm" />
+                    <Button label="Imprimir Carta" icon="pi pi-print" severity="info" outlined size="small" @click="imprimirReporte" class="h-9 shadow-sm" />
+                 </div>
+              </div>
+
+              <div v-if="loadingHistorial" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 font-bold uppercase text-xs">
+                 Cargando trazabilidad e historial de los productos...
+              </div>
+
+              <div v-else-if="historialItems.length === 0" class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 font-bold uppercase text-xs">
+                 No se encontraron productos coincidentes en el inventario.
+              </div>
+
+              <div v-else v-for="item in historialItems" :key="item.producto.id" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
+                 <!-- Header del producto en pantalla -->
+                 <div class="flex justify-between items-center bg-slate-900 text-white p-3 rounded-lg">
+                    <div>
+                       <h4 class="text-base font-black uppercase m-0 tracking-wide">{{ item.producto.nombre }}</h4>
+                       <p class="text-[10px] text-slate-300 font-bold m-0 mt-0.5">CÓDIGO / SKU: {{ item.producto.codigo_parte }}</p>
+                    </div>
+                    <div class="flex gap-4 text-xs font-bold bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
+                       <span>Stock: <strong class="text-emerald-400 font-black">{{ item.producto.stock }}</strong></span>
+                       <span v-if="item.producto.ubicacion">Ubicación: <strong>{{ item.producto.ubicacion }}</strong></span>
+                    </div>
+                 </div>
+
+                 <!-- Resumen rápido -->
+                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                    <div>
+                       <span class="text-slate-400 font-bold uppercase text-[10px] block">Ingresados en Compras</span>
+                       <span class="font-black text-slate-800 text-sm">{{ item.resumen.totalComprado }} unidades</span>
+                    </div>
+                    <div>
+                       <span class="text-slate-400 font-bold uppercase text-[10px] block">Vendidos en Ventas</span>
+                       <span class="font-black text-slate-800 text-sm">{{ item.resumen.totalVendido }} unidades</span>
+                    </div>
+                    <div>
+                       <span class="text-slate-400 font-bold uppercase text-[10px] block">Ajustes Netos</span>
+                       <span class="font-black text-sm" :class="item.resumen.totalAjustado >= 0 ? 'text-emerald-600' : 'text-rose-600'">
+                          {{ item.resumen.totalAjustado > 0 ? '+' : '' }}{{ item.resumen.totalAjustado }}
+                       </span>
+                    </div>
+                    <div>
+                       <span class="text-slate-400 font-bold uppercase text-[10px] block">Stock Actual</span>
+                       <span class="font-black text-slate-800 text-sm">{{ item.resumen.stockActual }}</span>
+                    </div>
+                 </div>
+
+                 <!-- 1. COMPRAS DE ESTE PRODUCTO -->
+                 <div>
+                    <h5 class="text-xs font-black uppercase text-slate-700 mb-2 flex items-center gap-2">
+                       <ShoppingCart :size="14" /> 1. Historial de Compras y Facturas ({{ item.compras.length }})
+                    </h5>
+                    <DataTable :value="item.compras" stripedRows class="p-datatable-sm text-xs">
+                       <Column field="fecha" header="Fecha">
+                          <template #body="{ data }">{{ formatDate(data.fecha) }}</template>
+                       </Column>
+                       <Column field="numero_compra" header="N° Compra">
+                          <template #body="{ data }">#{{ data.numero_compra }}</template>
+                       </Column>
+                       <Column field="numero_factura" header="Factura">
+                          <template #body="{ data }">{{ data.numero_factura || 'N/A' }}</template>
+                       </Column>
+                       <Column field="proveedor_nombre" header="Proveedor"></Column>
+                       <Column field="cantidad" header="Cantidad" class="text-center font-bold"></Column>
+                       <Column field="costo_unitario" header="Costo U.">
+                          <template #body="{ data }">{{ formatCurrency(data.costo_unitario) }}</template>
+                       </Column>
+                    </DataTable>
+                 </div>
+
+                 <!-- 2. AJUSTES DE STOCK -->
+                 <div>
+                    <h5 class="text-xs font-black uppercase text-slate-700 mb-2 flex items-center gap-2">
+                       <History :size="14" /> 2. Ajustes Manuales y Auditoría ({{ item.ajustes.length }})
+                    </h5>
+                    <DataTable :value="item.ajustes" stripedRows class="p-datatable-sm text-xs">
+                       <Column field="fecha" header="Fecha">
+                          <template #body="{ data }">{{ formatDateTime(data.fecha) }}</template>
+                       </Column>
+                       <Column field="accion" header="Acción" class="uppercase font-bold"></Column>
+                       <Column field="usuario_nombre" header="Usuario"></Column>
+                       <Column field="motivo" header="Motivo / Descripción">
+                          <template #body="{ data }"><span class="italic text-slate-600">{{ data.motivo || 'N/A' }}</span></template>
+                       </Column>
+                       <Column header="Cambio Stock" class="text-center font-bold">
+                          <template #body="{ data }">{{ data.stock_anterior }} &rarr; {{ data.stock_nuevo }}</template>
+                       </Column>
+                       <Column field="diferencia" header="Diferencia" class="text-center font-black">
+                          <template #body="{ data }">
+                             <span :class="data.diferencia >= 0 ? 'text-emerald-600' : 'text-rose-600'">
+                                {{ data.diferencia > 0 ? '+' : '' }}{{ data.diferencia }}
+                             </span>
+                          </template>
+                       </Column>
+                    </DataTable>
+                 </div>
+
+                 <!-- 3. VENTAS DE ESTE PRODUCTO -->
+                 <div>
+                    <h5 class="text-xs font-black uppercase text-slate-700 mb-2 flex items-center gap-2">
+                       <TrendingUp :size="14" /> 3. Historial de Ventas ({{ item.ventas.length }})
+                    </h5>
+                    <DataTable :value="item.ventas" stripedRows class="p-datatable-sm text-xs">
+                       <Column field="fecha" header="Fecha">
+                          <template #body="{ data }">{{ formatDate(data.fecha) }}</template>
+                       </Column>
+                       <Column field="numero_venta" header="N° Venta">
+                          <template #body="{ data }">#{{ data.numero_venta }}</template>
+                       </Column>
+                       <Column field="cliente_nombre" header="Cliente"></Column>
+                       <Column field="cantidad" header="Cantidad Vendida" class="text-center font-bold"></Column>
+                       <Column field="precio_unitario" header="Precio Unitario">
+                          <template #body="{ data }">{{ formatCurrency(data.precio_unitario) }}</template>
+                       </Column>
+                       <Column field="subtotal" header="Subtotal">
+                          <template #body="{ data }">{{ formatCurrency(data.subtotal) }}</template>
+                       </Column>
+                    </DataTable>
+                 </div>
+              </div>
+           </div>
+        </TabPanel>
       </TabPanels>
     </Tabs>
 
@@ -1172,9 +1395,9 @@ const getCleanContadoUsd = (cierre: any) => {
                  <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Responsable</p>
                  <p class="font-bold text-slate-800">{{ selectedClosure.responsable?.nombre }}</p>
               </div>
-              <div class="text-right">
-                 <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Fecha de Ejecución</p>
-                 <p class="font-bold text-slate-800">{{ formatDateTime(selectedClosure.created_at) }}</p>
+              <div>
+                 <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Fecha de Cierre</p>
+                 <p class="font-bold text-slate-800">{{ formatDate(selectedClosure.fecha) }}</p>
               </div>
            </div>
 
@@ -1335,6 +1558,12 @@ const getCleanContadoUsd = (cierre: any) => {
                  <ReportesComprasResumenReport 
                     :compras="compras" 
                     :filtros="{ desde: dateRangeStr?.desde, hasta: dateRangeStr?.hasta, search: searchProveedor }" 
+                 />
+             </div>
+             <div v-show="activeTab === 'historial-productos'">
+                 <ReportesHistorialProductoReport 
+                    :items="historialItems" 
+                    :loading="loadingHistorial" 
                  />
              </div>
          </div>
